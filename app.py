@@ -21,13 +21,12 @@ token = os.getenv("TOKEN")
 bot = Bot(token=token)
 dp = Dispatcher()
 
-dp.include_router(user_registration_router)
+dp.include_router(user_registration_router)  # Подключаем обработчики из user_register.py
 
 
 async def main():
     await bot.set_my_commands(commands=user_commands, scope=BotCommandScopeDefault())
     await dp.start_polling(bot, allowed_updates=ALLOWED_UPDATES)
-
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
