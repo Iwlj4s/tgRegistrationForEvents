@@ -1,7 +1,7 @@
 # Aiogram Imports #
 from aiogram import F, Router
 
-from aiogram.filters import CommandStart, Command, StateFilter
+from aiogram.filters import CommandStart, Command, StateFilter, or_f
 from aiogram.types import ReplyKeyboardRemove
 
 from aiogram.fsm.context import FSMContext
@@ -9,9 +9,10 @@ from aiogram.fsm.state import StatesGroup, State
 
 from aiogram.types import Message
 
-
 # My Imports #
 from keyboards.reply import start_registration_keyboard, confirm_or_change_user_info_by_user
+
+from user_data.get_user_info import get_user_info
 
 user_registration_router = Router()
 
@@ -25,8 +26,11 @@ class UserRegistration(StatesGroup):
 
     user_event_registration_change_or_confirm = State()
 
-    user_event_registration_confirm = State()
-    user_event_registration_change = State()
+    texts = {
+        'UserRegistration:user_event_registration_name': 'Заново введите свое имя: ',
+        'UserRegistration:user_event_registration_phone': 'Заново введите свой телефон: ',
+        'UserRegistration:user_event_registration_email': 'Заново введите свой email: '
+    }
 
 
 # Start Command #
@@ -39,7 +43,7 @@ async def cmd_start(message: Message):
 
 # User Select registration #
 # StateFilter(None) for check user have not any states #
-@user_registration_router.message(F.text.lower() == "регистрация на мероприятие")
+@user_registration_router.message(or_f(Command("event_registration"), (F.text.lower() == "регистрация на мероприятие")))
 @user_registration_router.message(StateFilter(None), Command("event_registration"))
 async def user_event_registration(message: Message, state: FSMContext):
     await message.answer("Введите свое имя: ",
@@ -47,6 +51,37 @@ async def user_event_registration(message: Message, state: FSMContext):
 
     # WAITING USER NAME #
     await state.set_state(UserRegistration.user_event_registration_name)
+
+
+# CANCEL #
+@user_registration_router.message(StateFilter('*'), F.text.lower() == "отмена")
+async def cancel_handler(message: Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state is None:
+        return
+
+    await state.clear()
+    await message.answer("Действия отменены")
+
+
+# BACK #
+@user_registration_router.message(StateFilter('*'), F.text.lower() == "изменить предыдущее поле")
+@user_registration_router.message(StateFilter('*'), Command("Изменить предыдущее поле"))
+async def back_handler(message: Message, state: FSMContext):
+    current_state = await state.get_state()
+
+    if current_state == UserRegistration.user_event_registration_name:
+        await message.answer("Предыдущего шага нет, введите свое имя или нажмите 'отмена' ")
+        return
+
+    previous_state = None
+    for step in UserRegistration.__all_states__:
+        if step.state == current_state:
+            await state.set_state(previous_state.state)
+            await message.answer(f"Вы вернулись к предыдущему шагу\n"
+                                 f"{UserRegistration.texts[previous_state.state]}")
+            return
+        previous_state = step
 
 
 # GET USER NAME #
@@ -75,15 +110,11 @@ async def user_enter_name(message: Message, state: FSMContext):
     await state.update_data(user_email=message.text)
     data = await state.get_data()
 
-    user_name = data.get("user_name")
-    user_phone = data.get("user_phone")
-    user_email = data.get("user_email")
+    info = get_user_info(data=data)
 
     await message.answer("Данные для регистрации: ")
-    await message.answer(f"Ваше никнейм - {message.from_user.full_name}\n"
-                         f"Ваше имя - {user_name}\n"
-                         f"Ваш телефон - {user_phone}\n"
-                         f"Ваша почта - {user_email}")
+    await message.answer(f"Ваш никнейм - {message.from_user.full_name}\n"
+                         f"{info}")
 
     # WAITING CONFIRM / CHANGE INFO #
     await message.answer("Вы готовы зарегистрироваться?",
@@ -103,14 +134,10 @@ async def user_change(message: Message, state: FSMContext):
                                   F.text.lower() == "зарегистрироваться")
 async def user_confirm(message: Message, state: FSMContext):
     data = await state.get_data()
-    user_name = data.get("user_name")
-    user_phone = data.get("user_phone")
-    user_email = data.get("user_email")
+    info = get_user_info(data=data)
 
-    await message.answer("Пользователь зарегистрирован ")
-    await message.answer(f"Ваше никнейм - {message.from_user.full_name}\n"
+    await message.answer("Зарегистрираван пользователь: ")
+    await message.answer(f"Ваш никнейм - {message.from_user.full_name}\n"
                          f"Ваш ID в телеграме - {message.from_user.id}\n"
-                         f"Ваше имя - {user_name}\n"
-                         f"Ваш телефон - {user_phone}\n"
-                         f"Ваша почта - {user_email}", reply_markup=ReplyKeyboardRemove())
+                         f"{info}", reply_markup=ReplyKeyboardRemove())
     await state.clear()

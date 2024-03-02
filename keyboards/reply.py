@@ -15,17 +15,10 @@ confirm_or_change_user_info_by_user = ReplyKeyboardMarkup(
     keyboard=[
         [
             KeyboardButton(text="Зарегистрироваться"),
-            KeyboardButton(text="Изменить информацию")
+            KeyboardButton(text="Изменить предыдущее поле")
         ],
     ],
     resize_keyboard=True
 )
 
-continue_keyboard = ReplyKeyboardMarkup(
-    keyboard=[
-        [
-            KeyboardButton(text="Продолжить"),
-        ],
-    ],
-    resize_keyboard=True
-)
+
