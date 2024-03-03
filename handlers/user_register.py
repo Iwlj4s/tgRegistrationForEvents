@@ -13,18 +13,21 @@ from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # My Imports #
-from keyboards.reply import start_registration_keyboard, confirm_or_change_user_info_by_user
+from keyboards.reply import start_registration_keyboard, confirm_or_change_user_info_by_user, get_keyboard
 
 from user_data.get_user_info import get_user_info
 
-from database.orm_query import orm_user_add_info
+from database.orm_query import orm_user_add_info, orm_get_events
 
 user_registration_router = Router()
 
 
 # STATE MACHINE #
+
+
 class UserRegistration(StatesGroup):
     # user_choose_event_registration = State()
+    user_event_registration_event = State()
     user_event_registration_name = State()
     user_event_registration_phone = State()
     user_event_registration_email = State()
@@ -32,6 +35,7 @@ class UserRegistration(StatesGroup):
     user_event_registration_change_or_confirm = State()
 
     texts = {
+        'UserRegistration:user_event_registration_event': 'Заново введите id мероприятия ',
         'UserRegistration:user_event_registration_name': 'Заново введите свое имя: ',
         'UserRegistration:user_event_registration_phone': 'Заново введите свой телефон: ',
         'UserRegistration:user_event_registration_email': 'Заново введите свой email: '
@@ -42,8 +46,19 @@ class UserRegistration(StatesGroup):
 @user_registration_router.message(CommandStart())
 async def cmd_start(message: Message):
     await message.answer(f"Привет, {message.from_user.first_name}! \n/event_registration - Регистрация на мероприятие"
-                         f"\n \n",
+                         f"\n/events - список мероприятий",
                          reply_markup=start_registration_keyboard)
+
+
+# EVENTS list #
+@user_registration_router.message(or_f(Command("event"), (F.text.lower() == "список мероприятий")))
+async def events_list(message: Message, session: AsyncSession):
+    await message.answer("Список мероприятий:")
+    for event in await orm_get_events(session=session):
+        await message.answer(f"{event.event_name}\n"
+                             f"User event_id - {event.id}\n"
+                             f"Дата мероприятия - {event.event_date}\n"
+                             f"Начало мероприятия - {event.event_time}\n")
 
 
 # User Select registration #
@@ -51,11 +66,11 @@ async def cmd_start(message: Message):
 @user_registration_router.message(or_f(Command("event_registration"), (F.text.lower() == "регистрация на мероприятие")))
 @user_registration_router.message(StateFilter(None), Command("event_registration"))
 async def user_event_registration(message: Message, state: FSMContext):
-    await message.answer("Введите свое имя: ",
+    await message.answer("Введите id мероприятия, на которое нужно зарегестрироваться: ",
                          reply_markup=ReplyKeyboardRemove())
 
-    # WAITING USER NAME #
-    await state.set_state(UserRegistration.user_event_registration_name)
+    # WAITING EVENT ID #
+    await state.set_state(UserRegistration.user_event_registration_event)
 
 
 # CANCEL #
@@ -66,7 +81,7 @@ async def cancel_handler(message: Message, state: FSMContext):
         return
 
     await state.clear()
-    await message.answer("Действия отменены")
+    await message.answer("Все действия отменены", reply_markup=start_registration_keyboard)
 
 
 # BACK #
@@ -75,7 +90,7 @@ async def cancel_handler(message: Message, state: FSMContext):
 async def back_handler(message: Message, state: FSMContext):
     current_state = await state.get_state()
 
-    if current_state == UserRegistration.user_event_registration_name:
+    if current_state == UserRegistration.user_event_registration_event:
         await message.answer("Предыдущего шага нет, введите свое имя или нажмите 'отмена' ")
         return
 
@@ -87,6 +102,21 @@ async def back_handler(message: Message, state: FSMContext):
                                  f"{UserRegistration.texts[previous_state.state]}")
             return
         previous_state = step
+
+
+# GET USER EVENT #
+@user_registration_router.message(UserRegistration.user_event_registration_event, F.text)
+async def user_enter_event(message: Message, state: FSMContext):
+    await state.update_data(event_id=message.text)
+
+    await message.answer("Введите свое имя: ",
+                         reply_markup=get_keyboard(
+                             "изменить предыдущее поле",
+                             "отмена"
+                         ))
+
+    # WAITING USER NAME #
+    await state.set_state(UserRegistration.user_event_registration_name)
 
 
 # GET USER NAME #

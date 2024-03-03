@@ -11,7 +11,8 @@ class Events(Base):
     __tablename__ = 'events'
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     event_name: Mapped[str] = mapped_column(Text, nullable=False)
-    users: Mapped[str] = mapped_column(Text, nullable=False)
+    event_date: Mapped[str] = mapped_column(Text, nullable=False)
+    event_time: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class Users(Base):

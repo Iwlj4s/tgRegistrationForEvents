@@ -9,6 +9,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.types import BotCommandScopeDefault
 
 from handlers.admin import admin_router
+
 # My Imports #
 from handlers.user_register import user_registration_router
 
@@ -19,7 +20,7 @@ load_dotenv()
 from database.engine import create_db, drop_db, session_maker
 from middlewares.db import DataBaseSession
 
-ALLOWED_UPDATES = ['message', 'edited_message']
+# ALLOWED_UPDATES = ['message', 'edited_message', 'callback_query']
 token = os.getenv("TOKEN")
 
 bot = Bot(token=token)
@@ -48,7 +49,7 @@ async def main():
     dp.update.middleware(DataBaseSession(session_pool=session_maker))
 
     await bot.set_my_commands(commands=user_commands, scope=BotCommandScopeDefault())
-    await dp.start_polling(bot, allowed_updates=ALLOWED_UPDATES)
+    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
 
 if __name__ == '__main__':

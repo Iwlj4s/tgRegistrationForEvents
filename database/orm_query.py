@@ -1,17 +1,25 @@
 from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import Users
+from database.models import Users, Events, Admins
 
 
+# USERS #
 async def orm_user_add_info(session: AsyncSession, data: dict, message):
+    event_id = int(data['event_id'])
+
+    async with session as async_session:
+        result = await async_session.execute(select(Events).where(Events.id == event_id))
+        event = result.scalar_one_or_none()
+        event_name = event.event_name
+
     obj = Users(
         tg_id=message.from_user.id,
-        event_id=int(1),
+        event_id=event_id,
         name=data['user_name'],
         phone=int(data['user_phone']),
         email=data['user_email'],
-        event='One Event'
+        event=event_name
     )
 
     session.add(obj)
@@ -19,7 +27,14 @@ async def orm_user_add_info(session: AsyncSession, data: dict, message):
     await session.commit()
 
 
-# Admin stuff #
+# EVENTS #
+async def orm_get_events(session: AsyncSession):
+    query = select(Events)
+    result = await session.execute(query)
+    return result.scalars().all()
+
+
+# ADMIN stuff #
 
 # Get all users
 async def orm_get_users(session: AsyncSession):
@@ -43,7 +58,7 @@ async def orm_change_user_info(session: AsyncSession, user_id: int, data):
         name=data['user_name'],
         phone=int(data['user_phone']),
         email=data['user_email'],
-        event=''
+        event=['event_id']
     )
 
     await session.execute(query)

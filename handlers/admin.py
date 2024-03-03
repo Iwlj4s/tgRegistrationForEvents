@@ -2,7 +2,7 @@
 from aiogram import F, Router
 
 from aiogram.filters import CommandStart, Command, StateFilter, or_f
-from aiogram.types import ReplyKeyboardRemove
+from aiogram.types import ReplyKeyboardRemove, CallbackQuery
 
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
@@ -13,14 +13,12 @@ from aiogram.types import Message
 from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import Admins
-
 # My Imports #
 from keyboards.reply import start_registration_keyboard, start_admin_keyboard
+from keyboards.inline import get_callback_btns
 
-from user_data.get_user_info import get_user_info
-
-from database.orm_query import orm_get_users
+from database.models import Admins
+from database.orm_query import orm_get_users, orm_delete_user
 
 admin_router = Router()
 
@@ -60,5 +58,19 @@ async def get_users(message: Message, session: AsyncSession):
                              f"User Name - {user.name}\n"
                              f"User Phone - {user.phone}\n"
                              f"User Email - {user.email}\n"
-                             f"User Event - {user.event}")
+                             f"User Event - {user.event}",
+                             reply_markup=get_callback_btns(btns={
+                                 'Изменить': f'change_{user.id}',
+                                 'Удалить': f'delete_{user.id}'
+                             })
+                             )
 
+
+@admin_router.callback_query(F.data.startswith('delete_'))
+async def delete_user(callback: CallbackQuery, session: AsyncSession):
+    print("Delete function start !")
+    user_id = callback.data.split("_")[-1]
+    await orm_delete_user(session=session, user_id=int(user_id))
+
+    await callback.answer("Пользователь удален")
+    await callback.message.answer("Пользователь удален!")
