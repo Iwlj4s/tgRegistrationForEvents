@@ -9,10 +9,15 @@ from aiogram.fsm.state import StatesGroup, State
 
 from aiogram.types import Message
 
+# SqlAlchemy Imports #
+from sqlalchemy.ext.asyncio import AsyncSession
+
 # My Imports #
 from keyboards.reply import start_registration_keyboard, confirm_or_change_user_info_by_user
 
 from user_data.get_user_info import get_user_info
+
+from database.orm_query import orm_user_add_info
 
 user_registration_router = Router()
 
@@ -122,19 +127,14 @@ async def user_enter_name(message: Message, state: FSMContext):
     await state.set_state(UserRegistration.user_event_registration_change_or_confirm)
 
 
-# CHANGE INFO #
-@user_registration_router.message(UserRegistration.user_event_registration_change_or_confirm,
-                                  F.text.lower() == "изменить информацию")
-async def user_change(message: Message, state: FSMContext):
-    await state.set_state(UserRegistration.user_event_registration_name)
-
-
 # CONFIRM INFO #
 @user_registration_router.message(UserRegistration.user_event_registration_change_or_confirm,
                                   F.text.lower() == "зарегистрироваться")
-async def user_confirm(message: Message, state: FSMContext):
+async def user_confirm(message: Message, state: FSMContext, session: AsyncSession):
     data = await state.get_data()
     info = get_user_info(data=data)
+
+    await orm_user_add_info(session=session, data=data, message=message)
 
     await message.answer("Зарегистрираван пользователь: ")
     await message.answer(f"Ваш никнейм - {message.from_user.full_name}\n"

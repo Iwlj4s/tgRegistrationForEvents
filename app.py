@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 from aiogram.types import BotCommandScopeDefault
 
+from handlers.admin import admin_router
 # My Imports #
 from handlers.user_register import user_registration_router
 
@@ -15,18 +16,40 @@ from bot_commands.bot_commands_list import user_commands
 
 load_dotenv()
 
+from database.engine import create_db, drop_db, session_maker
+from middlewares.db import DataBaseSession
+
 ALLOWED_UPDATES = ['message', 'edited_message']
 token = os.getenv("TOKEN")
 
 bot = Bot(token=token)
 dp = Dispatcher()
 
-dp.include_router(user_registration_router)  # Подключаем обработчики из user_register.py
+dp.include_router(user_registration_router)
+dp.include_router(admin_router)
+
+
+async def startup(bot):
+    run_param = False
+    if run_param:
+        await drop_db()
+
+    await create_db()
+
+
+async def shutdown(bot):
+    print("Bot down")
 
 
 async def main():
+    dp.startup.register(startup)
+    dp.shutdown.register(shutdown)
+
+    dp.update.middleware(DataBaseSession(session_pool=session_maker))
+
     await bot.set_my_commands(commands=user_commands, scope=BotCommandScopeDefault())
     await dp.start_polling(bot, allowed_updates=ALLOWED_UPDATES)
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)

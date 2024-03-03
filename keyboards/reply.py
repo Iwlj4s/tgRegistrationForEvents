@@ -1,6 +1,7 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
+# User #
 start_registration_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
@@ -22,3 +23,15 @@ confirm_or_change_user_info_by_user = ReplyKeyboardMarkup(
 )
 
 
+# Admin #
+
+start_admin_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="Просмотр пользователей"),
+            KeyboardButton(text="Изменить данные Пользователя"),
+            KeyboardButton(text="Выйти из администратора")
+        ],
+    ],
+    resize_keyboard=True
+)
