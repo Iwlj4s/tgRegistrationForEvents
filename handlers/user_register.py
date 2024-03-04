@@ -17,7 +17,9 @@ from keyboards.reply import start_registration_keyboard, confirm_or_change_user_
 
 from user_data.get_user_info import get_user_info
 
-from database.orm_query import orm_user_add_info, orm_get_events
+from database.orm_query import orm_user_add_info, orm_get_events, orm_get_user, orm_get_user_by_tg_id
+
+from checks.check_user_input import user_id_already_in_db, user_input_id_event_is_correct
 
 user_registration_router = Router()
 
@@ -65,10 +67,19 @@ async def events_list(message: Message, session: AsyncSession):
 # StateFilter(None) for check user have not any states #
 @user_registration_router.message(or_f(Command("event_registration"), (F.text.lower() == "регистрация на мероприятие")))
 @user_registration_router.message(StateFilter(None), Command("event_registration"))
-async def user_event_registration(message: Message, state: FSMContext):
-    await message.answer("Введите id мероприятия, на которое нужно зарегестрироваться: ",
-                         reply_markup=ReplyKeyboardRemove())
+async def user_event_registration(message: Message, state: FSMContext, session: AsyncSession):
+    # Check if user already in the database
+    if user_id_already_in_db(session=session, tg_id=message.from_user.id):
+        user = await orm_get_user_by_tg_id(session=session, tg_id=message.from_user.id)
+        if user:
+            await message.answer(f"Вы уже зарегистрированы на мероприятие - {user.event}",
+                                 reply_markup=start_registration_keyboard)
+            print(f"Пользователь {message.from_user.id} {message.from_user.full_name} пытается повторно "
+                  f"зарегистрироваться")
+            return
 
+    await message.answer("Введите id мероприятия, на которое нужно зарегистрироваться: ",
+                         reply_markup=ReplyKeyboardRemove())
     # WAITING EVENT ID #
     await state.set_state(UserRegistration.user_event_registration_event)
 
@@ -106,7 +117,12 @@ async def back_handler(message: Message, state: FSMContext):
 
 # GET USER EVENT #
 @user_registration_router.message(UserRegistration.user_event_registration_event, F.text)
-async def user_enter_event(message: Message, state: FSMContext):
+async def user_enter_event(message: Message, state: FSMContext, session: AsyncSession):
+    if not await user_input_id_event_is_correct(session=session, event_id=message.text):
+        await message.answer("введите корректный id мероприятия\n"
+                             "/event - мероприятия", reply_markup=start_registration_keyboard)
+        return
+
     await state.update_data(event_id=message.text)
 
     await message.answer("Введите свое имя: ",
@@ -148,7 +164,7 @@ async def user_enter_name(message: Message, state: FSMContext):
     info = get_user_info(data=data)
 
     await message.answer("Данные для регистрации: ")
-    await message.answer(f"Ваш никнейм - {message.from_user.full_name}\n"
+    await message.answer(f"Ваш ID в телеграме - {message.from_user.id}"
                          f"{info}")
 
     # WAITING CONFIRM / CHANGE INFO #
@@ -167,7 +183,6 @@ async def user_confirm(message: Message, state: FSMContext, session: AsyncSessio
     await orm_user_add_info(session=session, data=data, message=message)
 
     await message.answer("Зарегистрираван пользователь: ")
-    await message.answer(f"Ваш никнейм - {message.from_user.full_name}\n"
-                         f"Ваш ID в телеграме - {message.from_user.id}\n"
+    await message.answer(f"Ваш ID в телеграме - {message.from_user.id}\n"
                          f"{info}", reply_markup=ReplyKeyboardRemove())
     await state.clear()

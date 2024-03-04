@@ -27,11 +27,27 @@ async def orm_user_add_info(session: AsyncSession, data: dict, message):
     await session.commit()
 
 
+# Get user's tg_id #
+async def orm_get_user_by_tg_id(session: AsyncSession, tg_id: int):
+    query = select(Users).where(Users.tg_id == tg_id)
+    result = await session.execute(query)
+    user = result.scalar()
+    return user
+
+
 # EVENTS #
 async def orm_get_events(session: AsyncSession):
     query = select(Events)
     result = await session.execute(query)
     return result.scalars().all()
+
+
+# Get event id
+async def orm_get_events_id(session: AsyncSession, event_id: int):
+    query = select(Events).where(Events.id == event_id)
+    result = await session.execute(query)
+    event = result.scalar()
+    return event
 
 
 # ADMIN stuff #
