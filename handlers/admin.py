@@ -1,26 +1,45 @@
 # Aiogram Imports #
 from aiogram import F, Router
-
-from aiogram.filters import CommandStart, Command, StateFilter, or_f
-from aiogram.types import ReplyKeyboardRemove, CallbackQuery
-
+from aiogram.filters import Command, StateFilter, or_f
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-
 from aiogram.types import Message
-
+from aiogram.types import ReplyKeyboardRemove, CallbackQuery
 # SqlAlchemy Imports #
-from sqlalchemy import select, update, delete
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# My Imports #
-from keyboards.reply import start_registration_keyboard, start_admin_keyboard
-from keyboards.inline import get_callback_btns
-
+from checks.check_user_input import user_input_id_event_is_correct
 from database.models import Admins
-from database.orm_query import orm_get_users, orm_delete_user
+from database.orm_query import orm_get_users, orm_delete_user, orm_get_events, orm_get_user, orm_user_add_info, \
+    orm_update_user
+from handlers.user_register import UserRegistration
+from keyboards.inline import get_callback_btns
+# My Imports #
+from keyboards.reply import start_registration_keyboard, start_admin_keyboard, get_keyboard, \
+    confirm_or_change_user_info_by_user, confirm_or_change_user_info_by_admin
+from user_data.get_user_info import get_user_info
 
 admin_router = Router()
+
+
+class ChangeUserInfo(StatesGroup):
+    # user_choose_event_registration = State()
+    user_event_registration_event = State()
+    user_event_registration_name = State()
+    user_event_registration_phone = State()
+    user_event_registration_email = State()
+
+    user_event_registration_change_or_confirm = State()
+
+    user_for_change = None
+
+    texts = {
+        'UserRegistration:user_event_registration_event': 'Измените id мероприятия ',
+        'UserRegistration:user_event_registration_name': 'Измените имя пользователя: ',
+        'UserRegistration:user_event_registration_phone': 'Измените телефон пользователя: ',
+        'UserRegistration:user_event_registration_email': 'Измените email пользователя: '
+    }
 
 
 # Start For admin #
@@ -66,6 +85,18 @@ async def get_users(message: Message, session: AsyncSession):
                              )
 
 
+# Check Events
+@admin_router.message(or_f(Command("event"), (F.text.lower() == "просмотр мероприятий")))
+async def events_list(message: Message, session: AsyncSession):
+    await message.answer("Список мероприятий:")
+    for event in await orm_get_events(session=session):
+        await message.answer(f"{event.event_name}\n"
+                             f"User event_id - {event.id}\n"
+                             f"Дата мероприятия - {event.event_date}\n"
+                             f"Начало мероприятия - {event.event_time}\n")
+
+
+# Delete User
 @admin_router.callback_query(F.data.startswith('delete_'))
 async def delete_user(callback: CallbackQuery, session: AsyncSession):
     print("Delete function start !")
@@ -74,3 +105,131 @@ async def delete_user(callback: CallbackQuery, session: AsyncSession):
 
     await callback.answer("Пользователь удален")
     await callback.message.answer("Пользователь удален!")
+
+
+# CANCEL #
+@admin_router.message(StateFilter('*'), F.text.lower() == "отмена")
+async def cancel_handler(message: Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state is None:
+        return
+
+    if ChangeUserInfo.user_for_change:
+        ChangeUserInfo.user_for_change = None
+
+    await state.clear()
+    await message.answer("Все действия отменены", reply_markup=start_admin_keyboard)
+
+
+# BACK #
+@admin_router.message(StateFilter('*'), F.text.lower() == "изменить предыдущее поле")
+@admin_router.message(StateFilter('*'), Command("Изменить предыдущее поле"))
+async def back_handler(message: Message, state: FSMContext):
+    current_state = await state.get_state()
+
+    if current_state == ChangeUserInfo.user_event_registration_event:
+        await message.answer("Предыдущего шага нет, введите свое имя или нажмите 'отмена' ")
+        return
+
+    previous_state = None
+    for step in ChangeUserInfo.__all_states__:
+        if step.state == current_state:
+            await state.set_state(previous_state.state)
+            await message.answer(f"Вы вернулись к предыдущему шагу\n"
+                                 f"{ChangeUserInfo.texts[previous_state.state]}")
+            return
+        previous_state = step
+
+
+# Change user
+@admin_router.callback_query(StateFilter(None), F.data.startswith('change_'))
+async def change_user(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
+    user_id = callback.data.split("_")[-1]
+    user_for_change = await orm_get_user(session=session, user_id=int(user_id))
+
+    ChangeUserInfo.user_for_change = user_for_change
+
+    await callback.answer()
+    await callback.message.answer("Введите id мероприятия: ",
+                                  reply_markup=get_keyboard(
+                                      "изменить предыдущее поле",
+                                      "отмена"
+                                  ))
+
+    await state.set_state(ChangeUserInfo.user_event_registration_event)
+
+
+# GET USER EVENT #
+@admin_router.message(ChangeUserInfo.user_event_registration_event, F.text)
+async def admin_enter_event(message: Message, state: FSMContext, session: AsyncSession):
+
+    if not await user_input_id_event_is_correct(session=session, event_id=message.text):
+        await message.answer("Введите корректный id мероприятия\n"
+                             "/event - мероприятия", reply_markup=start_registration_keyboard)
+        return
+
+    await state.update_data(event_id=message.text)
+
+    await message.answer("Измените имя пользователя: ",
+                         reply_markup=get_keyboard(
+                             "изменить предыдущее поле",
+                             "отмена"
+                         ))
+
+    # WAITING USER NAME #
+    await state.set_state(ChangeUserInfo.user_event_registration_name)
+
+
+# GET USER NAME #
+@admin_router.message(ChangeUserInfo.user_event_registration_name, F.text)
+async def admin_enter_name(message: Message, state: FSMContext):
+    await state.update_data(user_name=message.text.lower())
+
+    await message.answer("Измените номер телефона пользователя: ")
+    # WAITING USER PHONE #
+    await state.set_state(ChangeUserInfo.user_event_registration_phone)
+
+
+# GET USER PHONE #
+@admin_router.message(ChangeUserInfo.user_event_registration_phone, F.text)
+async def admin_enter_name(message: Message, state: FSMContext):
+
+    await state.update_data(user_phone=message.text)
+
+    await message.answer("Измените email пользователя: ")
+    # WAITING USER EMAIL #
+    await state.set_state(ChangeUserInfo.user_event_registration_email)
+
+
+# GET USER EMAIL #
+@admin_router.message(ChangeUserInfo.user_event_registration_email, F.text)
+async def admin_enter_name(message: Message, state: FSMContext):
+
+    await state.update_data(user_email=message.text)
+    data = await state.get_data()
+
+    info = get_user_info(data=data)
+
+    await message.answer("Данные для изменения информации: ")
+    await message.answer(f"{info}")
+
+    # WAITING CONFIRM / CHANGE INFO #
+    await message.answer("Изменить информацию?",
+                         reply_markup=confirm_or_change_user_info_by_admin)
+    await state.set_state(ChangeUserInfo.user_event_registration_change_or_confirm)
+
+
+# CONFIRM INFO #
+@admin_router.message(ChangeUserInfo.user_event_registration_change_or_confirm,
+                      F.text.lower() == "изменить информацию")
+async def admin_confirm(message: Message, state: FSMContext, session: AsyncSession):
+    data = await state.get_data()
+    info = get_user_info(data=data)
+
+    await orm_update_user(session=session, user_id=ChangeUserInfo.user_for_change.id, data=data, message=message)
+
+    await message.answer("Пользователь изменен: ")
+    await message.answer(f"{info}", reply_markup=start_admin_keyboard)
+    await state.clear()
+
+    ChangeUserInfo.user_for_change = None

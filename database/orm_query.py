@@ -27,6 +27,26 @@ async def orm_user_add_info(session: AsyncSession, data: dict, message):
     await session.commit()
 
 
+# Update User #
+async def orm_update_user(session: AsyncSession, user_id: int, data, message):
+    event_id = int(data['event_id'])
+
+    async with session as async_session:
+        result = await async_session.execute(select(Events).where(Events.id == event_id))
+        event = result.scalar_one_or_none()
+        event_name = event.event_name
+
+    query = update(Users).where(Users.id == user_id).values(
+        tg_id=message.from_user.id,
+        event_id=event_id,
+        name=data['user_name'],
+        phone=int(data['user_phone']),
+        email=data['user_email'],)
+
+    await session.execute(query)
+    await session.commit()
+
+
 # Get user's tg_id #
 async def orm_get_user_by_tg_id(session: AsyncSession, tg_id: int):
     query = select(Users).where(Users.tg_id == tg_id)
@@ -59,7 +79,7 @@ async def orm_get_users(session: AsyncSession):
     return result.scalars().all()
 
 
-# Get one user
+# Get one user by id
 async def orm_get_user(session: AsyncSession, user_id: int):
     query = select(Users).where(Users.id == user_id)
     result = await session.execute(query)

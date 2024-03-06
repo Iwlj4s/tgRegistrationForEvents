@@ -17,7 +17,7 @@ from keyboards.reply import start_registration_keyboard, confirm_or_change_user_
 
 from user_data.get_user_info import get_user_info
 
-from database.orm_query import orm_user_add_info, orm_get_events, orm_get_user, orm_get_user_by_tg_id
+from database.orm_query import orm_user_add_info, orm_get_events, orm_get_user_by_tg_id
 
 from checks.check_user_input import user_id_already_in_db, user_input_id_event_is_correct
 
@@ -186,3 +186,4 @@ async def user_confirm(message: Message, state: FSMContext, session: AsyncSessio
     await message.answer(f"Ваш ID в телеграме - {message.from_user.id}\n"
                          f"{info}", reply_markup=ReplyKeyboardRemove())
     await state.clear()
+

@@ -1,6 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.orm_query import orm_get_user_by_tg_id, orm_get_events, orm_get_events_id
-from database.models import Users
+from database.orm_query import orm_get_user_by_tg_id, orm_get_events_id
 
 
 # Check user input already not in db #
