@@ -1,26 +1,26 @@
 # Aiogram Imports #
 from aiogram import F, Router
-
 from aiogram.filters import CommandStart, Command, StateFilter, or_f
-from aiogram.types import ReplyKeyboardRemove
-
+from aiogram.types import Message, ReplyKeyboardRemove, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 
-from aiogram.types import Message
-
 # SqlAlchemy Imports #
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 # My Imports #
 from keyboards.reply import start_registration_keyboard, confirm_or_change_user_info_by_user, get_keyboard, \
     after_registration_user_keyboard
+from keyboards.inline import get_callback_btns
 
 from user_data.get_user_info import get_user_info
 
-from database.orm_query import orm_user_add_info, orm_get_events, orm_get_user_by_tg_id
-
 from checks.check_user_input import user_id_already_in_db, user_input_id_event_is_correct
+
+from database.models import Events
+from database.orm_query import orm_user_add_info, orm_get_events, orm_get_user_by_tg_id, orm_save_user_event_info
+
 
 user_registration_router = Router()
 
@@ -30,7 +30,6 @@ user_registration_router = Router()
 
 class UserRegistration(StatesGroup):
     # user_choose_event_registration = State()
-    user_event_registration_event = State()
     user_event_registration_name = State()
     user_event_registration_phone = State()
     user_event_registration_email = State()
@@ -38,11 +37,14 @@ class UserRegistration(StatesGroup):
     user_event_registration_change_or_confirm = State()
 
     texts = {
-        'UserRegistration:user_event_registration_event': 'Заново введите id мероприятия ',
         'UserRegistration:user_event_registration_name': 'Заново введите свое имя: ',
         'UserRegistration:user_event_registration_phone': 'Заново введите свой телефон: ',
         'UserRegistration:user_event_registration_email': 'Заново введите свой email: '
     }
+
+
+class EventRegistration(StatesGroup):
+    user_event_registration_event = State()
 
 
 # Start Command #
@@ -101,7 +103,7 @@ async def cancel_handler(message: Message, state: FSMContext):
 async def back_handler(message: Message, state: FSMContext):
     current_state = await state.get_state()
 
-    if current_state == UserRegistration.user_event_registration_event:
+    if current_state == UserRegistration.user_event_registration_name:
         await message.answer("Предыдущего шага нет, введите свое имя или нажмите 'отмена' ")
         return
 
@@ -186,23 +188,31 @@ async def look_user(message: Message, state: FSMContext, session: AsyncSession):
 @user_registration_router.message(StateFilter(None), Command("event_registration"))
 async def user_event_registration(message: Message, state: FSMContext, session: AsyncSession):
     await message.answer("Вы в 'стадии' регистрации на мероприятие", reply_markup=after_registration_user_keyboard)
+    await message.answer("Список мероприятий:")
+    for event in await orm_get_events(session=session):
+        await message.answer(f"{event.event_name}\n"
+                             f"User event_id - {event.id}\n"
+                             f"Дата мероприятия - {event.event_date}\n"
+                             f"Начало мероприятия - {event.event_time}\n",
+                             reply_markup=get_callback_btns(btns={
+                                 'Записаться': f'event_registration_{event.id}'
+                             })
+                             )
 
 
-# GET USER EVENT #
-@user_registration_router.message(UserRegistration.user_event_registration_event, F.text)
-async def user_enter_event(message: Message, state: FSMContext, session: AsyncSession):
-    if not await user_input_id_event_is_correct(session=session, event_id=message.text):
-        await message.answer("введите корректный id мероприятия\n"
-                             "/event - мероприятия", reply_markup=start_registration_keyboard)
-        return
+# CONFIRM INFO #
+@user_registration_router.callback_query(F.data.startswith("event_registration_"))
+async def process_event_registration(callback_query: CallbackQuery, state: FSMContext, session: AsyncSession):
+    event_id = int(callback_query.data.split('_')[-1])
+    data = await state.get_data()
 
-    await state.update_data(event_id=message.text)
+    events = select(Events.event_name).where(Events.id == event_id)
+    result = await session.execute(events)
+    event_name = result.scalar()
 
-    await message.answer("Введите свое имя: ",
-                         reply_markup=get_keyboard(
-                             "изменить предыдущее поле",
-                             "отмена"
-                         ))
+    # Save user event registration info to UsersEvents table
+    await orm_save_user_event_info(session=session, tg_id=callback_query.from_user.id, event_id=event_id)
 
-    # WAITING ... #
-    await state.set_state()
+    await callback_query.answer("Вы успешно записаны на мероприятие!")
+    await callback_query.message.answer(f"Вы успешно записаны на мероприятие {event_name}")
+

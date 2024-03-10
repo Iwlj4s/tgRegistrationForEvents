@@ -5,20 +5,23 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import Message
 from aiogram.types import ReplyKeyboardRemove, CallbackQuery
+
 # SqlAlchemy Imports #
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from checks.check_user_input import user_input_id_event_is_correct
-from database.models import Admins
-from database.orm_query import orm_get_users, orm_delete_user, orm_get_events, orm_get_user, orm_user_add_info, \
-    orm_update_user
-from handlers.user_register import UserRegistration
-from keyboards.inline import get_callback_btns
 # My Imports #
 from keyboards.reply import start_registration_keyboard, start_admin_keyboard, get_keyboard, \
     confirm_or_change_user_info_by_user, confirm_or_change_user_info_by_admin
+from keyboards.inline import get_callback_btns
+
 from user_data.get_user_info import get_user_info
+
+from checks.check_user_input import user_input_id_event_is_correct
+
+from database.models import Admins
+from database.orm_query import orm_get_users, orm_delete_user, orm_get_events, orm_get_user, orm_user_add_info, \
+    orm_update_user
 
 admin_router = Router()
 
