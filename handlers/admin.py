@@ -73,11 +73,9 @@ async def get_users(message: Message, session: AsyncSession):
     for user in await orm_get_users(session=session):
         await message.answer(f"User id - {user.id}\n"
                              f"User tg_id - {user.tg_id}\n"
-                             f"User event_id - {user.event_id}\n"
                              f"User Name - {user.name}\n"
                              f"User Phone - {user.phone}\n"
-                             f"User Email - {user.email}\n"
-                             f"User Event - {user.event}",
+                             f"User Email - {user.email}\n",
                              reply_markup=get_callback_btns(btns={
                                  'Изменить': f'change_{user.id}',
                                  'Удалить': f'delete_{user.id}'

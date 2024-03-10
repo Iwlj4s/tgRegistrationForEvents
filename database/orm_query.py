@@ -6,20 +6,12 @@ from database.models import Users, Events, Admins
 
 # USERS #
 async def orm_user_add_info(session: AsyncSession, data: dict, message):
-    event_id = int(data['event_id'])
-
-    async with session as async_session:
-        result = await async_session.execute(select(Events).where(Events.id == event_id))
-        event = result.scalar_one_or_none()
-        event_name = event.event_name
 
     obj = Users(
         tg_id=message.from_user.id,
-        event_id=event_id,
         name=data['user_name'],
         phone=int(data['user_phone']),
         email=data['user_email'],
-        event=event_name
     )
 
     session.add(obj)
@@ -29,16 +21,9 @@ async def orm_user_add_info(session: AsyncSession, data: dict, message):
 
 # Update User #
 async def orm_update_user(session: AsyncSession, user_id: int, data, message):
-    event_id = int(data['event_id'])
-
-    async with session as async_session:
-        result = await async_session.execute(select(Events).where(Events.id == event_id))
-        event = result.scalar_one_or_none()
-        event_name = event.event_name
 
     query = update(Users).where(Users.id == user_id).values(
         tg_id=message.from_user.id,
-        event_id=event_id,
         name=data['user_name'],
         phone=int(data['user_phone']),
         email=data['user_email'],)
@@ -94,7 +79,6 @@ async def orm_change_user_info(session: AsyncSession, user_id: int, data):
         name=data['user_name'],
         phone=int(data['user_phone']),
         email=data['user_email'],
-        event=['event_id']
     )
 
     await session.execute(query)

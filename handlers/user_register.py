@@ -13,7 +13,8 @@ from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # My Imports #
-from keyboards.reply import start_registration_keyboard, confirm_or_change_user_info_by_user, get_keyboard
+from keyboards.reply import start_registration_keyboard, confirm_or_change_user_info_by_user, get_keyboard, \
+    after_registration_user_keyboard
 
 from user_data.get_user_info import get_user_info
 
@@ -47,7 +48,8 @@ class UserRegistration(StatesGroup):
 # Start Command #
 @user_registration_router.message(CommandStart())
 async def cmd_start(message: Message):
-    await message.answer(f"Привет, {message.from_user.first_name}! \n/event_registration - Регистрация на мероприятие"
+    await message.answer(f"Привет, {message.from_user.first_name}! \n/registration - Регистрация\n"
+                         f"/event_registration - Регистрация на мероприятие"
                          f"\n/events - список мероприятий",
                          reply_markup=start_registration_keyboard)
 
@@ -63,25 +65,23 @@ async def events_list(message: Message, session: AsyncSession):
                              f"Начало мероприятия - {event.event_time}\n")
 
 
-# User Select registration #
+# USER REGISTRATION #
 # StateFilter(None) for check user have not any states #
-@user_registration_router.message(or_f(Command("event_registration"), (F.text.lower() == "регистрация на мероприятие")))
-@user_registration_router.message(StateFilter(None), Command("event_registration"))
-async def user_event_registration(message: Message, state: FSMContext, session: AsyncSession):
+@user_registration_router.message(or_f(Command("registration"), (F.text.lower() == "регистрация")))
+@user_registration_router.message(StateFilter(None), Command("registration"))
+async def user_registration(message: Message, state: FSMContext, session: AsyncSession):
     # Check if user already in the database
     if user_id_already_in_db(session=session, tg_id=message.from_user.id):
         user = await orm_get_user_by_tg_id(session=session, tg_id=message.from_user.id)
         if user:
-            await message.answer(f"Вы уже зарегистрированы на мероприятие - {user.event}",
-                                 reply_markup=start_registration_keyboard)
-            print(f"Пользователь {message.from_user.id} {message.from_user.full_name} пытается повторно "
-                  f"зарегистрироваться")
+            await message.answer(f"Вы уже зарегистрированы",
+                                 reply_markup=after_registration_user_keyboard)
             return
 
-    await message.answer("Введите id мероприятия, на которое нужно зарегистрироваться: ",
+    await message.answer("Введите свое имя: ",
                          reply_markup=ReplyKeyboardRemove())
     # WAITING EVENT ID #
-    await state.set_state(UserRegistration.user_event_registration_event)
+    await state.set_state(UserRegistration.user_event_registration_name)
 
 
 # CANCEL #
@@ -113,26 +113,6 @@ async def back_handler(message: Message, state: FSMContext):
                                  f"{UserRegistration.texts[previous_state.state]}")
             return
         previous_state = step
-
-
-# GET USER EVENT #
-@user_registration_router.message(UserRegistration.user_event_registration_event, F.text)
-async def user_enter_event(message: Message, state: FSMContext, session: AsyncSession):
-    if not await user_input_id_event_is_correct(session=session, event_id=message.text):
-        await message.answer("введите корректный id мероприятия\n"
-                             "/event - мероприятия", reply_markup=start_registration_keyboard)
-        return
-
-    await state.update_data(event_id=message.text)
-
-    await message.answer("Введите свое имя: ",
-                         reply_markup=get_keyboard(
-                             "изменить предыдущее поле",
-                             "отмена"
-                         ))
-
-    # WAITING USER NAME #
-    await state.set_state(UserRegistration.user_event_registration_name)
 
 
 # GET USER NAME #
@@ -187,3 +167,42 @@ async def user_confirm(message: Message, state: FSMContext, session: AsyncSessio
                          f"{info}", reply_markup=ReplyKeyboardRemove())
     await state.clear()
 
+
+@user_registration_router.message(F.text.lower() == "посмотреть пользователя")
+async def look_user(message: Message, state: FSMContext, session: AsyncSession):
+    user_tg_id = message.from_user.id
+    user_info = await orm_get_user_by_tg_id(session=session, tg_id=int(user_tg_id))
+
+    await message.answer(f"Зарегистрированный пользователь - {user_info.tg_id}\n"
+                         f"Id пользователя - {user_info.id}\n"
+                         f"Телеграмм Id - {user_info.tg_id}\n"
+                         f"Имя - {user_info.name}\n"
+                         f"Телефон - {user_info.phone}\n"
+                         f"Эл. Почта - {user_info.email}\n", reply_markup=after_registration_user_keyboard)
+
+
+# REGISTRATION ON EVENT #
+@user_registration_router.message(or_f(Command("event_registration"), (F.text.lower() == "регистрация на мероприятие")))
+@user_registration_router.message(StateFilter(None), Command("event_registration"))
+async def user_event_registration(message: Message, state: FSMContext, session: AsyncSession):
+    await message.answer("Вы в 'стадии' регистрации на мероприятие", reply_markup=after_registration_user_keyboard)
+
+
+# GET USER EVENT #
+@user_registration_router.message(UserRegistration.user_event_registration_event, F.text)
+async def user_enter_event(message: Message, state: FSMContext, session: AsyncSession):
+    if not await user_input_id_event_is_correct(session=session, event_id=message.text):
+        await message.answer("введите корректный id мероприятия\n"
+                             "/event - мероприятия", reply_markup=start_registration_keyboard)
+        return
+
+    await state.update_data(event_id=message.text)
+
+    await message.answer("Введите свое имя: ",
+                         reply_markup=get_keyboard(
+                             "изменить предыдущее поле",
+                             "отмена"
+                         ))
+
+    # WAITING ... #
+    await state.set_state()
