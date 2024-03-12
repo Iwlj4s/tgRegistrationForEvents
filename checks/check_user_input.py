@@ -1,5 +1,9 @@
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.orm_query import orm_get_user_by_tg_id, orm_get_events_id
+from database.orm_query import (orm_get_user_by_tg_id, orm_get_events_id, orm_get_users_events_by_tg_id,
+                                orm_get_user_id_by_event_id)
+
+from database.models import Events, UsersEvents
 
 
 # Check user input already not in db #
@@ -17,4 +21,14 @@ async def user_input_id_event_is_correct(session: AsyncSession, event_id):
     events = await orm_get_events_id(session=session, event_id=int(event_id))
     if events:
         return True
+    return False
+
+
+# Check user input correct event id #
+async def user_try_one_more(session, tg_id, event_id):
+    user_events = await orm_get_users_events_by_tg_id(session=session, tg_id=int(tg_id))
+    user_tg_id = await orm_get_user_id_by_event_id(session=session, event_id=int(event_id))
+    if user_events and user_tg_id:
+        return True
+
     return False

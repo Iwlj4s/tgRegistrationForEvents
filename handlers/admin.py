@@ -38,7 +38,6 @@ class ChangeUserInfo(StatesGroup):
     user_for_change = None
 
     texts = {
-        'UserRegistration:user_event_registration_event': 'Измените id мероприятия ',
         'UserRegistration:user_event_registration_name': 'Измените имя пользователя: ',
         'UserRegistration:user_event_registration_phone': 'Измените телефон пользователя: ',
         'UserRegistration:user_event_registration_email': 'Измените email пользователя: '
@@ -151,31 +150,11 @@ async def change_user(callback: CallbackQuery, state: FSMContext, session: Async
     ChangeUserInfo.user_for_change = user_for_change
 
     await callback.answer()
-    await callback.message.answer("Введите id мероприятия: ",
+    await callback.message.answer("Измените имя пользователя: ",
                                   reply_markup=get_keyboard(
                                       "изменить предыдущее поле",
                                       "отмена"
                                   ))
-
-    await state.set_state(ChangeUserInfo.user_event_registration_event)
-
-
-# GET USER EVENT #
-@admin_router.message(ChangeUserInfo.user_event_registration_event, F.text)
-async def admin_enter_event(message: Message, state: FSMContext, session: AsyncSession):
-
-    if not await user_input_id_event_is_correct(session=session, event_id=message.text):
-        await message.answer("Введите корректный id мероприятия\n"
-                             "/event - мероприятия", reply_markup=start_registration_keyboard)
-        return
-
-    await state.update_data(event_id=message.text)
-
-    await message.answer("Измените имя пользователя: ",
-                         reply_markup=get_keyboard(
-                             "изменить предыдущее поле",
-                             "отмена"
-                         ))
 
     # WAITING USER NAME #
     await state.set_state(ChangeUserInfo.user_event_registration_name)
@@ -234,3 +213,24 @@ async def admin_confirm(message: Message, state: FSMContext, session: AsyncSessi
     await state.clear()
 
     ChangeUserInfo.user_for_change = None
+
+
+# GET USER EVENT #
+@admin_router.message(ChangeUserInfo.user_event_registration_event, F.text)
+async def admin_enter_event(message: Message, state: FSMContext, session: AsyncSession):
+
+    if not await user_input_id_event_is_correct(session=session, event_id=message.text):
+        await message.answer("Введите корректный id мероприятия\n"
+                             "/event - мероприятия", reply_markup=start_registration_keyboard)
+        return
+
+    await state.update_data(event_id=message.text)
+
+    await message.answer("Измените имя пользователя: ",
+                         reply_markup=get_keyboard(
+                             "изменить предыдущее поле",
+                             "отмена"
+                         ))
+
+    # WAITING ... #
+    await state.set_state()

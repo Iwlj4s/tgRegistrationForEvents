@@ -80,6 +80,20 @@ async def orm_save_user_event_info(session: AsyncSession, tg_id, event_id: int):
     await session.commit()
 
 
+async def orm_get_users_events_by_tg_id(session: AsyncSession, tg_id: int):
+    query = select(UsersEvents).filter(UsersEvents.user_tg_id == tg_id)
+    result = await session.execute(query)
+    events = result.scalar()
+    return events
+
+
+async def orm_get_user_id_by_event_id(session: AsyncSession, event_id: int):
+    query = select(UsersEvents).filter(UsersEvents.user_event_id == event_id)
+    result = await session.execute(query)
+    tg_id = result.scalar()
+    return tg_id
+
+
 # ADMIN stuff #
 
 # Get all users

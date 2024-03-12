@@ -16,7 +16,7 @@ from keyboards.inline import get_callback_btns
 
 from user_data.get_user_info import get_user_info
 
-from checks.check_user_input import user_id_already_in_db, user_input_id_event_is_correct
+from checks.check_user_input import user_id_already_in_db, user_input_id_event_is_correct, user_try_one_more
 
 from database.models import Events
 from database.orm_query import orm_user_add_info, orm_get_events, orm_get_user_by_tg_id, orm_save_user_event_info
@@ -146,7 +146,7 @@ async def user_enter_name(message: Message, state: FSMContext):
     info = get_user_info(data=data)
 
     await message.answer("Данные для регистрации: ")
-    await message.answer(f"Ваш ID в телеграме - {message.from_user.id}"
+    await message.answer(f"Ваш ID в телеграме - {message.from_user.id}\n"
                          f"{info}")
 
     # WAITING CONFIRM / CHANGE INFO #
@@ -166,7 +166,8 @@ async def user_confirm(message: Message, state: FSMContext, session: AsyncSessio
 
     await message.answer("Зарегистрираван пользователь: ")
     await message.answer(f"Ваш ID в телеграме - {message.from_user.id}\n"
-                         f"{info}", reply_markup=ReplyKeyboardRemove())
+                         f"{info}",
+                         reply_markup=after_registration_user_keyboard)
     await state.clear()
 
 
@@ -209,6 +210,13 @@ async def process_event_registration(callback_query: CallbackQuery, state: FSMCo
     events = select(Events.event_name).where(Events.id == event_id)
     result = await session.execute(events)
     event_name = result.scalar()
+
+    check_user = await user_try_one_more(session=session, tg_id=callback_query.from_user.id, event_id=event_id)
+
+    if check_user:
+        await callback_query.answer("")
+        await callback_query.message.answer(f"Вы уже записаны на мероприятие {event_name}")
+        return
 
     # Save user event registration info to UsersEvents table
     await orm_save_user_event_info(session=session, tg_id=callback_query.from_user.id, event_id=event_id)
