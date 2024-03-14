@@ -1,7 +1,7 @@
 from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import Users, Events, Admins, UsersEvents
+from database.models import Users, Events, UsersEvents
 
 
 # USERS #
@@ -55,6 +55,7 @@ async def orm_get_events_id(session: AsyncSession, event_id: int):
     return event
 
 
+# USERS EVENTS #
 # Save selected Event in UsersEvents
 async def orm_save_user_event_info(session: AsyncSession, tg_id, event_id: int):
     # get event name #
@@ -78,6 +79,22 @@ async def orm_save_user_event_info(session: AsyncSession, tg_id, event_id: int):
 
     session.add(user_event)
     await session.commit()
+
+
+# Update Users Events
+async def orm_update_users_events(session: AsyncSession, user_tg_id: int, data: dict):
+    print(f"Updating UsersEvents for user_tg_id: {user_tg_id}")
+    print(f"Data to update: {data}")
+
+    query = update(UsersEvents).where(UsersEvents.user_tg_id == user_tg_id).values(
+        user_name=data['user_name'],
+        user_phone=int(data['user_phone']),
+        user_email=data['user_email']
+    )
+    result = await session.execute(query)
+    await session.commit()
+
+    print(f"UsersEvents updated successfully.")
 
 
 async def orm_get_users_events_by_tg_id(session: AsyncSession, tg_id: int):
@@ -126,6 +143,13 @@ async def orm_change_user_info(session: AsyncSession, user_id: int, data):
 
 # Delete User
 async def orm_delete_user(session: AsyncSession, user_id: int):
-    query = delete(Users).where(Users.id == user_id)
+    query = delete(Users).where(Users.tg_id == user_id)
+    await session.execute(query)
+    await session.commit()
+
+
+# Delete User From Events
+async def orm_delete_user_from_events(session: AsyncSession, user_id: int):
+    query = delete(UsersEvents).where(UsersEvents.user_tg_id == user_id)
     await session.execute(query)
     await session.commit()

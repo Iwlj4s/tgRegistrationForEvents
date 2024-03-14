@@ -11,17 +11,17 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # My Imports #
-from keyboards.reply import start_registration_keyboard, start_admin_keyboard, get_keyboard, \
-    confirm_or_change_user_info_by_user, confirm_or_change_user_info_by_admin
+from keyboards.reply import (start_registration_keyboard, start_admin_keyboard, get_keyboard,
+                             confirm_or_change_user_info_by_admin)
 from keyboards.inline import get_callback_btns
 
-from user_data.get_user_info import get_user_info
+from user_data.get_user_info import get_user_info, get_user_data_for_admin
 
 from checks.check_user_input import user_input_id_event_is_correct
 
 from database.models import Admins
 from database.orm_query import orm_get_users, orm_delete_user, orm_get_events, orm_get_user, orm_user_add_info, \
-    orm_update_user
+    orm_update_user, orm_delete_user_from_events, orm_update_users_events
 
 admin_router = Router()
 
@@ -80,7 +80,7 @@ async def get_users(message: Message, session: AsyncSession):
                              f"User Email - {user.email}\n",
                              reply_markup=get_callback_btns(btns={
                                  'Изменить': f'change_{user.id}',
-                                 'Удалить': f'delete_{user.id}'
+                                 'Удалить': f'delete_{user.tg_id}'
                              })
                              )
 
@@ -102,6 +102,7 @@ async def delete_user(callback: CallbackQuery, session: AsyncSession):
     print("Delete function start !")
     user_id = callback.data.split("_")[-1]
     await orm_delete_user(session=session, user_id=int(user_id))
+    await orm_delete_user_from_events(session=session, user_id=int(user_id))
 
     await callback.answer("Пользователь удален")
     await callback.message.answer("Пользователь удален!")
@@ -127,7 +128,7 @@ async def cancel_handler(message: Message, state: FSMContext):
 async def back_handler(message: Message, state: FSMContext):
     current_state = await state.get_state()
 
-    if current_state == ChangeUserInfo.user_event_registration_event:
+    if current_state == ChangeUserInfo.user_event_registration_name:
         await message.answer("Предыдущего шага нет, введите свое имя или нажмите 'отмена' ")
         return
 
@@ -204,9 +205,12 @@ async def admin_enter_name(message: Message, state: FSMContext):
                       F.text.lower() == "изменить информацию")
 async def admin_confirm(message: Message, state: FSMContext, session: AsyncSession):
     data = await state.get_data()
-    info = get_user_info(data=data)
+    info = get_user_data_for_admin(data=data)
+    print(info)
+    print(data)
 
     await orm_update_user(session=session, user_id=ChangeUserInfo.user_for_change.id, data=data, message=message)
+    await orm_update_users_events(session=session, user_tg_id=ChangeUserInfo.user_for_change.tg_id, data=data)
 
     await message.answer("Пользователь изменен: ")
     await message.answer(f"{info}", reply_markup=start_admin_keyboard)
