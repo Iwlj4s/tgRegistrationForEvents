@@ -54,12 +54,24 @@ start_admin_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+# Cancel or Back admin keyboard
+cancel_or_back_admin = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="[Admin] Изменить предыдущее поле"),
+            KeyboardButton(text="отмена")
+
+        ],
+    ],
+    resize_keyboard=True
+)
+
 # Confirm changing info (by admin) keyboard
 confirm_or_change_user_info_by_admin = ReplyKeyboardMarkup(
     keyboard=[
         [
             KeyboardButton(text="Изменить информацию"),
-            KeyboardButton(text="Изменить предыдущее поле"),
+            KeyboardButton(text="[Admin] Изменить предыдущее поле"),
             KeyboardButton(text="отмена")
 
         ],

@@ -43,10 +43,6 @@ class UserRegistration(StatesGroup):
     }
 
 
-class EventRegistration(StatesGroup):
-    user_event_registration_event = State()
-
-
 # Start Command #
 @user_registration_router.message(CommandStart())
 async def cmd_start(message: Message):
@@ -94,13 +90,14 @@ async def cancel_handler(message: Message, state: FSMContext):
         return
 
     await state.clear()
-    await message.answer("Все действия отменены", reply_markup=start_registration_keyboard)
+    await message.answer("Все действия отменены", reply_markup=after_registration_user_keyboard)
 
 
 # BACK #
 @user_registration_router.message(StateFilter('*'), F.text.lower() == "изменить предыдущее поле")
 @user_registration_router.message(StateFilter('*'), Command("Изменить предыдущее поле"))
 async def back_handler(message: Message, state: FSMContext):
+    print("Back Pressed!")
     current_state = await state.get_state()
 
     if current_state == UserRegistration.user_event_registration_name:
@@ -171,6 +168,7 @@ async def user_confirm(message: Message, state: FSMContext, session: AsyncSessio
     await state.clear()
 
 
+# Check user
 @user_registration_router.message(F.text.lower() == "посмотреть пользователя")
 async def look_user(message: Message, state: FSMContext, session: AsyncSession):
     user_tg_id = message.from_user.id
@@ -201,7 +199,7 @@ async def user_event_registration(message: Message, state: FSMContext, session: 
                              )
 
 
-# CONFIRM INFO #
+# add user in event
 @user_registration_router.callback_query(F.data.startswith("event_registration_"))
 async def process_event_registration(callback_query: CallbackQuery, state: FSMContext, session: AsyncSession):
     event_id = int(callback_query.data.split('_')[-1])
