@@ -24,7 +24,8 @@ from checks.check_user_input import user_input_id_event_is_correct
 
 from database.models import Admins
 from database.orm_query import orm_get_users, orm_delete_user, orm_get_events, orm_get_user, orm_user_add_info, \
-    orm_update_user, orm_delete_user_from_events, orm_update_users_events, orm_add_event
+    orm_update_user, orm_delete_user_from_events, orm_update_users_events, orm_add_event, orm_delete_event, \
+    orm_delete_event_from_users_events, orm_get_events_id, orm_update_users_events_by_event_id, orm_update_event
 
 admin_router = Router()
 
@@ -51,6 +52,8 @@ class AddEvent(StatesGroup):
     add_event_time = State()
 
     confirm_or_change_event = State()
+
+    event_for_change = None
 
     texts = {
         'AddEvent:add_event_name': 'Измените имя мероприятия',
@@ -83,7 +86,8 @@ async def exit_from_admin(message: Message):
                          reply_markup=start_registration_keyboard)
 
 
-# Check Users #
+# USER STUFF #
+# Check Users
 @admin_router.message(F.text.lower() == "просмотр пользователей")
 async def get_users(message: Message, session: AsyncSession):
     await message.answer("Вот список пользователей: ")
@@ -94,25 +98,14 @@ async def get_users(message: Message, session: AsyncSession):
                              f"User Phone - {user.phone}\n"
                              f"User Email - {user.email}\n",
                              reply_markup=get_callback_btns(btns={
-                                 'Изменить': f'change_{user.id}',
-                                 'Удалить': f'delete_{user.tg_id}'
+                                 'Изменить': f'change_user_{user.id}',
+                                 'Удалить': f'delete_user_{user.tg_id}'
                              })
                              )
 
 
-# Check Events
-@admin_router.message(or_f(Command("event"), (F.text.lower() == "просмотр мероприятий")))
-async def events_list(message: Message, session: AsyncSession):
-    await message.answer("Список мероприятий:")
-    for event in await orm_get_events(session=session):
-        await message.answer(f"{event.event_name}\n"
-                             f"User event_id - {event.id}\n"
-                             f"Дата мероприятия - {event.event_date}\n"
-                             f"Начало мероприятия - {event.event_time}\n")
-
-
 # Delete User
-@admin_router.callback_query(F.data.startswith('delete_'))
+@admin_router.callback_query(F.data.startswith('delete_user_'))
 async def delete_user(callback: CallbackQuery, session: AsyncSession):
     print("Delete function start !")
     user_id = callback.data.split("_")[-1]
@@ -124,7 +117,7 @@ async def delete_user(callback: CallbackQuery, session: AsyncSession):
 
 
 # Change user
-@admin_router.callback_query(StateFilter(None), F.data.startswith('change_'))
+@admin_router.callback_query(StateFilter(None), F.data.startswith('change_user_'))
 async def change_user(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
     user_id = callback.data.split("_")[-1]
     user_for_change = await orm_get_user(session=session, user_id=int(user_id))
@@ -175,7 +168,6 @@ async def admin_back_user_info_handler(message: Message, state: FSMContext):
 
 
 # BACK FOR EVENT #
-# BACK #
 @admin_router.message(StateFilter('*'), F.text.lower() == "[admin-event] изменить предыдущее поле")
 async def admin_back_event_add_handler(message: Message, state: FSMContext):
     print("Back Pressed!")
@@ -196,7 +188,7 @@ async def admin_back_event_add_handler(message: Message, state: FSMContext):
         previous_state = step
 
 
-# GET USER NAME #
+# GET USER NAME
 @admin_router.message(ChangeUserInfo.change_user_event_registration_name, F.text)
 async def admin_enter_name(message: Message, state: FSMContext):
     await state.update_data(user_name=message.text.lower())
@@ -207,7 +199,7 @@ async def admin_enter_name(message: Message, state: FSMContext):
     await state.set_state(ChangeUserInfo.change_user_event_registration_phone)
 
 
-# GET USER PHONE #
+# GET USER PHONE
 @admin_router.message(ChangeUserInfo.change_user_event_registration_phone, F.text)
 async def admin_enter_phone(message: Message, state: FSMContext):
     await state.update_data(user_phone=message.text)
@@ -217,7 +209,7 @@ async def admin_enter_phone(message: Message, state: FSMContext):
     await state.set_state(ChangeUserInfo.change_user_event_registration_email)
 
 
-# GET USER EMAIL #
+# GET USER EMAIL
 @admin_router.message(ChangeUserInfo.change_user_event_registration_email, F.text)
 async def admin_enter_email(message: Message, state: FSMContext):
     await state.update_data(user_email=message.text)
@@ -234,7 +226,7 @@ async def admin_enter_email(message: Message, state: FSMContext):
     await state.set_state(ChangeUserInfo.changing_user_event_registration_change_or_confirm)
 
 
-# CONFIRM USER INFO #
+# CONFIRM USER INFO
 @admin_router.message(ChangeUserInfo.changing_user_event_registration_change_or_confirm,
                       F.text.lower() == "изменить информацию")
 async def admin_confirm(message: Message, state: FSMContext, session: AsyncSession):
@@ -248,18 +240,64 @@ async def admin_confirm(message: Message, state: FSMContext, session: AsyncSessi
 
     await message.answer("Пользователь изменен: ")
     await message.answer(f"{info}", reply_markup=start_admin_keyboard)
-    await state.clear()
 
+    await state.clear()
     ChangeUserInfo.user_for_change = None
 
 
-# ADD EVENT #
+# EVENT STUFF #
+# Check Events
+@admin_router.message(or_f(Command("event"), (F.text.lower() == "просмотр мероприятий")))
+async def events_list(message: Message, session: AsyncSession):
+    await message.answer("Список мероприятий:")
+    for event in await orm_get_events(session=session):
+        await message.answer(f"{event.event_name}\n"
+                             f"User event_id - {event.id}\n"
+                             f"Дата мероприятия - {event.event_date}\n"
+                             f"Начало мероприятия - {event.event_time}\n",
+                             reply_markup=get_callback_btns(btns={
+                                 'Изменить': f'change_event_{event.id}',
+                                 'Удалить': f'delete_event_{event.id}'
+                             })
+                             )
+
+
+# Add Event
 @admin_router.message(StateFilter(None), F.text.lower() == "добавить мероприятие")
 async def add_event(message: Message, state: FSMContext):
     await message.answer("Введите название мероприятия: ",
                          reply_markup=cancel_or_back_for_add_event_admin)
 
     # WAIT EVENT NAME #
+    await state.set_state(AddEvent.add_event_name)
+
+
+# Delete Event
+@admin_router.callback_query(F.data.startswith('delete_event_'))
+async def delete_event(callback: CallbackQuery, session: AsyncSession):
+    print("Event Delete function start !")
+    event_id = callback.data.split("_")[-1]
+    await orm_delete_event(session=session, event_id=int(event_id))
+    await orm_delete_event_from_users_events(session=session, event_id=int(event_id))
+
+    await callback.answer("Мероприятие удалено!")
+    await callback.message.answer("Мероприятие удалено!")
+
+
+# Change event
+@admin_router.callback_query(StateFilter(None), F.data.startswith('change_event_'))
+async def change_event(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
+    event_id = callback.data.split("_")[-1]
+
+    event_for_change = await orm_get_events_id(session=session, event_id=int(event_id))
+
+    AddEvent.event_for_change = event_for_change
+
+    await callback.answer()
+    await callback.message.answer("Измените название меропрития: ",
+                                  reply_markup=cancel_or_back_for_add_event_admin)
+
+    # WAITING USER NAME #
     await state.set_state(AddEvent.add_event_name)
 
 
@@ -305,11 +343,23 @@ async def add_event_time(message: Message, state: FSMContext):
 @admin_router.message(AddEvent.confirm_or_change_event, F.text.lower() == "добавить мероприятие")
 async def add_event_time(message: Message, state: FSMContext, session: AsyncSession):
     data = await state.get_data()
+
     info = get_event_info(data=data)
 
-    await orm_add_event(session=session, data=data, message=message)
+    if AddEvent.event_for_change:
+        await orm_update_event(session=session, event_id=AddEvent.event_for_change.id, data=data)
+        await orm_update_users_events_by_event_id(session=session, event_id=AddEvent.event_for_change.id, data=data)
+        await message.answer(f"Вы изменили мероприятие - {AddEvent.event_for_change.event_name}\n"
+                             f"{info}",
+                             reply_markup=start_admin_keyboard)
 
-    await message.answer("Вы добавили мероприятие: \n"
-                         f"{info}",
-                         reply_markup=start_admin_keyboard)
+    else:
+        await orm_add_event(session=session, data=data, message=message)
+
+        await message.answer("Вы добавили мероприятие: \n"
+                             f"{info}",
+                             reply_markup=start_admin_keyboard)
+
+    await state.clear()
+    AddEvent.event_for_change = None
 
