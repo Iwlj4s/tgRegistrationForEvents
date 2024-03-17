@@ -14,6 +14,18 @@ start_registration_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+# Cancel or Back for User Change admin keyboard
+cancel_or_back_user = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="Изменить предыдущее поле"),
+            KeyboardButton(text="отмена")
+
+        ],
+    ],
+    resize_keyboard=True
+)
+
 # confirm registration (by user) keyboard
 confirm_or_change_user_info_by_user = ReplyKeyboardMarkup(
     keyboard=[
@@ -48,17 +60,30 @@ start_admin_keyboard = ReplyKeyboardMarkup(
         [
             KeyboardButton(text="Просмотр пользователей"),
             KeyboardButton(text="Просмотр мероприятий"),
+            KeyboardButton(text="Добавить мероприятие"),
             KeyboardButton(text="Выйти из администратора")
         ],
     ],
     resize_keyboard=True
 )
 
-# Cancel or Back admin keyboard
-cancel_or_back_admin = ReplyKeyboardMarkup(
+# Cancel or Back for User Change admin keyboard
+cancel_or_back_for_user_change_admin = ReplyKeyboardMarkup(
     keyboard=[
         [
-            KeyboardButton(text="[Admin] Изменить предыдущее поле"),
+            KeyboardButton(text="[Admin-user] Изменить предыдущее поле"),
+            KeyboardButton(text="отмена")
+
+        ],
+    ],
+    resize_keyboard=True
+)
+
+# Cancel or Back for Add Event admin keyboard
+cancel_or_back_for_add_event_admin = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="[Admin-event] Изменить предыдущее поле"),
             KeyboardButton(text="отмена")
 
         ],
@@ -71,7 +96,20 @@ confirm_or_change_user_info_by_admin = ReplyKeyboardMarkup(
     keyboard=[
         [
             KeyboardButton(text="Изменить информацию"),
-            KeyboardButton(text="[Admin] Изменить предыдущее поле"),
+            KeyboardButton(text="[Admin-user] Изменить предыдущее поле"),
+            KeyboardButton(text="отмена")
+
+        ],
+    ],
+    resize_keyboard=True
+)
+
+# Confirm or change event info
+confirm_or_change_event_info_by_admin = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="Добавить мероприятие"),
+            KeyboardButton(text="[Admin-event] Изменить предыдущее поле"),
             KeyboardButton(text="отмена")
 
         ],

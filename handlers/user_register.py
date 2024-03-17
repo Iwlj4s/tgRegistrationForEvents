@@ -11,7 +11,7 @@ from sqlalchemy import select
 
 # My Imports #
 from keyboards.reply import start_registration_keyboard, confirm_or_change_user_info_by_user, get_keyboard, \
-    after_registration_user_keyboard
+    after_registration_user_keyboard, cancel_or_back_user
 from keyboards.inline import get_callback_btns
 
 from user_data.get_user_info import get_user_info
@@ -26,8 +26,6 @@ user_registration_router = Router()
 
 
 # STATE MACHINE #
-
-
 class UserRegistration(StatesGroup):
     # user_choose_event_registration = State()
     user_event_registration_name = State()
@@ -78,7 +76,7 @@ async def user_registration(message: Message, state: FSMContext, session: AsyncS
 
     await message.answer("Введите свое имя: ",
                          reply_markup=ReplyKeyboardRemove())
-    # WAITING EVENT ID #
+    # WAITING USER NAME #
     await state.set_state(UserRegistration.user_event_registration_name)
 
 
@@ -119,7 +117,8 @@ async def back_handler(message: Message, state: FSMContext):
 async def user_enter_name(message: Message, state: FSMContext):
     await state.update_data(user_name=message.text.lower())
 
-    await message.answer("Введите свой номер телефона: ")
+    await message.answer("Введите свой номер телефона: ",
+                         reply_markup=cancel_or_back_user)
     # WAITING USER PHONE #
     await state.set_state(UserRegistration.user_event_registration_phone)
 

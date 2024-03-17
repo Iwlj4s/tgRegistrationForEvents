@@ -12,9 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # My Imports #
 from keyboards.reply import (start_registration_keyboard, start_admin_keyboard, get_keyboard,
-                             confirm_or_change_user_info_by_admin, cancel_or_back_admin,
-                             confirm_or_change_user_info_by_user)
+                             confirm_or_change_user_info_by_admin, confirm_or_change_user_info_by_user,
+                             confirm_or_change_event_info_by_admin, cancel_or_back_for_user_change_admin,
+                             cancel_or_back_for_add_event_admin)
 from keyboards.inline import get_callback_btns
+from user_data.get_event_info import get_event_info
 
 from user_data.get_user_info import get_user_info, get_user_data_for_admin
 
@@ -22,7 +24,7 @@ from checks.check_user_input import user_input_id_event_is_correct
 
 from database.models import Admins
 from database.orm_query import orm_get_users, orm_delete_user, orm_get_events, orm_get_user, orm_user_add_info, \
-    orm_update_user, orm_delete_user_from_events, orm_update_users_events
+    orm_update_user, orm_delete_user_from_events, orm_update_users_events, orm_add_event
 
 admin_router = Router()
 
@@ -40,6 +42,20 @@ class ChangeUserInfo(StatesGroup):
         'ChangeUserInfo:change_user_event_registration_name': 'Измените имя пользователя: ',
         'ChangeUserInfo:change_user_event_registration_phone': 'Измените телефон пользователя: ',
         'ChangeUserInfo:change_user_event_registration_email': 'Измените email пользователя: '
+    }
+
+
+class AddEvent(StatesGroup):
+    add_event_name = State()
+    add_event_date = State()
+    add_event_time = State()
+
+    confirm_or_change_event = State()
+
+    texts = {
+        'AddEvent:add_event_name': 'Измените имя мероприятия',
+        'AddEvent:add_event_date': 'Измените дату мероприятия',
+        'AddEvent:add_event_time': 'Измените время мероприятия'
     }
 
 
@@ -117,7 +133,7 @@ async def change_user(callback: CallbackQuery, state: FSMContext, session: Async
 
     await callback.answer()
     await callback.message.answer("Измените имя пользователя: ",
-                                  reply_markup=cancel_or_back_admin)
+                                  reply_markup=ReplyKeyboardRemove())
 
     # WAITING USER NAME #
     await state.set_state(ChangeUserInfo.change_user_event_registration_name)
@@ -138,9 +154,9 @@ async def cancel_handler(message: Message, state: FSMContext):
     await message.answer("Все действия отменены", reply_markup=start_admin_keyboard)
 
 
-# BACK #
-@admin_router.message(StateFilter('*'), F.text.lower() == "[admin] изменить предыдущее поле")
-async def admin_back_handler(message: Message, state: FSMContext):
+# BACK FOR USER #
+@admin_router.message(StateFilter('*'), F.text.lower() == "[admin-user] изменить предыдущее поле")
+async def admin_back_user_info_handler(message: Message, state: FSMContext):
     print("XUi")
     current_state = await state.get_state()
 
@@ -158,12 +174,35 @@ async def admin_back_handler(message: Message, state: FSMContext):
         previous_state = step
 
 
+# BACK FOR EVENT #
+# BACK #
+@admin_router.message(StateFilter('*'), F.text.lower() == "[admin-event] изменить предыдущее поле")
+async def admin_back_event_add_handler(message: Message, state: FSMContext):
+    print("Back Pressed!")
+    current_state = await state.get_state()
+
+    if current_state == AddEvent.add_event_name:
+        await message.answer("Предыдущего шага нет\n"
+                             "Введите название мероприятия или нажмите 'отмена' ")
+        return
+
+    previous_state = None
+    for step in AddEvent.__all_states__:
+        if step.state == current_state:
+            await state.set_state(previous_state.state)
+            await message.answer(f"Вы вернулись к предыдущему шагу\n"
+                                 f"{AddEvent.texts[previous_state.state]}")
+            return
+        previous_state = step
+
+
 # GET USER NAME #
 @admin_router.message(ChangeUserInfo.change_user_event_registration_name, F.text)
 async def admin_enter_name(message: Message, state: FSMContext):
     await state.update_data(user_name=message.text.lower())
 
-    await message.answer("Измените номер телефона пользователя: ")
+    await message.answer("Измените номер телефона пользователя: ",
+                         reply_markup=cancel_or_back_for_user_change_admin)
     # WAITING USER PHONE #
     await state.set_state(ChangeUserInfo.change_user_event_registration_phone)
 
@@ -195,7 +234,7 @@ async def admin_enter_email(message: Message, state: FSMContext):
     await state.set_state(ChangeUserInfo.changing_user_event_registration_change_or_confirm)
 
 
-# CONFIRM INFO #
+# CONFIRM USER INFO #
 @admin_router.message(ChangeUserInfo.changing_user_event_registration_change_or_confirm,
                       F.text.lower() == "изменить информацию")
 async def admin_confirm(message: Message, state: FSMContext, session: AsyncSession):
@@ -214,22 +253,63 @@ async def admin_confirm(message: Message, state: FSMContext, session: AsyncSessi
     ChangeUserInfo.user_for_change = None
 
 
-# GET USER EVENT #
-# @admin_router.message(ChangeUserInfo.user_event_registration_event, F.text)
-# async def admin_enter_event(message: Message, state: FSMContext, session: AsyncSession):
-#
-#     if not await user_input_id_event_is_correct(session=session, event_id=message.text):
-#         await message.answer("Введите корректный id мероприятия\n"
-#                              "/event - мероприятия", reply_markup=start_registration_keyboard)
-#         return
-#
-#     await state.update_data(event_id=message.text)
-#
-#     await message.answer("Измените имя пользователя: ",
-#                          reply_markup=get_keyboard(
-#                              "изменить предыдущее поле",
-#                              "отмена"
-#                          ))
-#
-#     # WAITING ... #
-#     await state.set_state()
+# ADD EVENT #
+@admin_router.message(StateFilter(None), F.text.lower() == "добавить мероприятие")
+async def add_event(message: Message, state: FSMContext):
+    await message.answer("Введите название мероприятия: ",
+                         reply_markup=cancel_or_back_for_add_event_admin)
+
+    # WAIT EVENT NAME #
+    await state.set_state(AddEvent.add_event_name)
+
+
+# Event Name
+@admin_router.message(AddEvent.add_event_name, F.text)
+async def add_event_name(message: Message, state: FSMContext):
+    await state.update_data(event_name=message.text.title())
+
+    await message.answer("Введите дату мероприятия: ")
+
+    # WAITING EVENT DATE #
+    await state.set_state(AddEvent.add_event_date)
+
+
+# Event Date
+@admin_router.message(AddEvent.add_event_date, F.text)
+async def add_event_date(message: Message, state: FSMContext):
+    await state.update_data(event_date=message.text)
+
+    await message.answer("Введите время мероприятия: ")
+
+    # WAITING EVENT DATE #
+    await state.set_state(AddEvent.add_event_time)
+
+
+# Event Time
+@admin_router.message(AddEvent.add_event_time, F.text)
+async def add_event_time(message: Message, state: FSMContext):
+    await state.update_data(event_time=message.text)
+
+    data = await state.get_data()
+    info = get_event_info(data=data)
+
+    await message.answer("Мероприятие: \n"
+                         f"{info}")
+
+    # WAITING CONFIRM / CHANGE EVENT #
+    await message.answer("Добавить мероприятие?",
+                         reply_markup=confirm_or_change_event_info_by_admin)
+    await state.set_state(AddEvent.confirm_or_change_event)
+
+
+@admin_router.message(AddEvent.confirm_or_change_event, F.text.lower() == "добавить мероприятие")
+async def add_event_time(message: Message, state: FSMContext, session: AsyncSession):
+    data = await state.get_data()
+    info = get_event_info(data=data)
+
+    await orm_add_event(session=session, data=data, message=message)
+
+    await message.answer("Вы добавили мероприятие: \n"
+                         f"{info}",
+                         reply_markup=start_admin_keyboard)
+

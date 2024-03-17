@@ -153,3 +153,17 @@ async def orm_delete_user_from_events(session: AsyncSession, user_id: int):
     query = delete(UsersEvents).where(UsersEvents.user_tg_id == user_id)
     await session.execute(query)
     await session.commit()
+
+
+# Add Event
+async def orm_add_event(session: AsyncSession, data: dict, message):
+
+    obj = Events(
+        event_name=data['event_name'],
+        event_date=data['event_date'],
+        event_time=data['event_time'],
+    )
+
+    session.add(obj)
+
+    await session.commit()
