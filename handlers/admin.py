@@ -11,20 +11,19 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # My Imports #
-from keyboards.reply import (start_registration_keyboard, start_admin_keyboard, get_keyboard,
-                             confirm_or_change_user_info_by_admin, confirm_or_change_user_info_by_user,
-                             confirm_or_change_event_info_by_admin, cancel_or_back_for_user_change_admin,
+from keyboards.reply import (start_registration_keyboard, start_admin_keyboard,
+                             confirm_or_change_user_info_by_admin, confirm_or_change_event_info_by_admin,
+                             cancel_or_back_for_user_change_admin,
                              cancel_or_back_for_add_event_admin)
 from keyboards.inline import get_callback_btns
-from user_data.get_event_info import get_event_info
 
 from user_data.get_user_info import get_user_info, get_user_data_for_admin
+from user_data.get_event_info import get_event_info
 
-from checks.check_user_input import user_input_id_event_is_correct
 
 from database.models import Admins
-from database.orm_query import orm_get_users, orm_delete_user, orm_get_events, orm_get_user, orm_user_add_info, \
-    orm_update_user, orm_delete_user_from_events, orm_update_users_events, orm_add_event, orm_delete_event, \
+from database.orm_query import orm_get_users, orm_delete_user, orm_get_events, orm_get_user, orm_update_user, \
+    orm_delete_user_from_events, orm_update_users_events, orm_add_event, orm_delete_event, \
     orm_delete_event_from_users_events, orm_get_events_id, orm_update_users_events_by_event_id, orm_update_event
 
 admin_router = Router()
@@ -340,6 +339,7 @@ async def add_event_time(message: Message, state: FSMContext):
     await state.set_state(AddEvent.confirm_or_change_event)
 
 
+# Adding Event
 @admin_router.message(AddEvent.confirm_or_change_event, F.text.lower() == "добавить мероприятие")
 async def add_event_time(message: Message, state: FSMContext, session: AsyncSession):
     data = await state.get_data()
