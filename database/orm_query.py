@@ -1,7 +1,7 @@
 from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import Users, Events, UsersEvents
+from database.models import Users, Events, UsersEvents, ClosedEvents
 
 
 # USERS #
@@ -167,6 +167,19 @@ async def orm_change_user_info(session: AsyncSession, user_id: int, data):
     await session.commit()
 
 
+# Add info in ClosedEvents #
+async def orm_add_info_in_closed_events(session: AsyncSession, event: Events):
+    obj = ClosedEvents(
+        id=event.id,
+        event_name=event.event_name,
+        event_date=event.event_date,
+        event_time=event.event_time,
+    )
+
+    session.add(obj)
+    await session.commit()
+
+
 # Delete User
 async def orm_delete_user(session: AsyncSession, user_id: int):
     query = delete(Users).where(Users.tg_id == user_id)
@@ -182,7 +195,7 @@ async def orm_delete_user_from_events(session: AsyncSession, user_id: int):
 
 
 # Add Event
-async def orm_add_event(session: AsyncSession, data: dict, message):
+async def orm_add_event(session: AsyncSession, data, message):
 
     obj = Events(
         event_name=data['event_name'],

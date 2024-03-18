@@ -24,7 +24,8 @@ from user_data.get_event_info import get_event_info
 from database.models import Admins
 from database.orm_query import orm_get_users, orm_delete_user, orm_get_events, orm_get_user, orm_update_user, \
     orm_delete_user_from_events, orm_update_users_events, orm_add_event, orm_delete_event, \
-    orm_delete_event_from_users_events, orm_get_events_id, orm_update_users_events_by_event_id, orm_update_event
+    orm_delete_event_from_users_events, orm_get_events_id, orm_update_users_events_by_event_id, orm_update_event, \
+    orm_add_info_in_closed_events
 
 admin_router = Router()
 
@@ -256,6 +257,7 @@ async def events_list(message: Message, session: AsyncSession):
                              f"Начало мероприятия - {event.event_time}\n",
                              reply_markup=get_callback_btns(btns={
                                  'Изменить': f'change_event_{event.id}',
+                                 'Закрыть': f'close_event_{event.id}',
                                  'Удалить': f'delete_event_{event.id}'
                              })
                              )
@@ -271,13 +273,29 @@ async def add_event(message: Message, state: FSMContext):
     await state.set_state(AddEvent.add_event_name)
 
 
+# Close Event
+@admin_router.callback_query(F.data.startswith('close_event_'))
+async def close_event(callback: CallbackQuery, session: AsyncSession):
+    event_id = callback.data.split("_")[-1]
+    event = await orm_get_events_id(session=session, event_id=int(event_id))
+
+    await orm_add_info_in_closed_events(session=session, event=event)   # Add closing event in closedEvents
+    await orm_delete_event(session=session, event_id=int(event_id))     # Delete closing event from Events
+    await orm_delete_event_from_users_events(session=session, event_id=int(event_id))   # Delete closing event from
+    # usersEvents
+
+    await callback.answer("Мероприятие закрыто!")
+    await callback.message.answer("Мероприятие закрыто!")
+
+
 # Delete Event
 @admin_router.callback_query(F.data.startswith('delete_event_'))
 async def delete_event(callback: CallbackQuery, session: AsyncSession):
     print("Event Delete function start !")
     event_id = callback.data.split("_")[-1]
-    await orm_delete_event(session=session, event_id=int(event_id))
-    await orm_delete_event_from_users_events(session=session, event_id=int(event_id))
+    await orm_delete_event(session=session, event_id=int(event_id))  # Delete closing event from Events
+    await orm_delete_event_from_users_events(session=session, event_id=int(event_id))   # Delete closing event from
+    # usersEvents
 
     await callback.answer("Мероприятие удалено!")
     await callback.message.answer("Мероприятие удалено!")
@@ -347,8 +365,10 @@ async def add_event_time(message: Message, state: FSMContext, session: AsyncSess
     info = get_event_info(data=data)
 
     if AddEvent.event_for_change:
-        await orm_update_event(session=session, event_id=AddEvent.event_for_change.id, data=data)
+        await orm_update_event(session=session, event_id=AddEvent.event_for_change.id, data=data)   # Update Events
+        # Update usersEvents
         await orm_update_users_events_by_event_id(session=session, event_id=AddEvent.event_for_change.id, data=data)
+
         await message.answer(f"Вы изменили мероприятие - {AddEvent.event_for_change.event_name}\n"
                              f"{info}",
                              reply_markup=start_admin_keyboard)
