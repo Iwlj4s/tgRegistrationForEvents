@@ -44,6 +44,7 @@ after_registration_user_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
             KeyboardButton(text="Регистрация на мероприятие"),
+            KeyboardButton(text="Отписаться от мероприятия"),
             KeyboardButton(text="Посмотреть пользователя"),
             KeyboardButton(text="Список мероприятий"),
         ],

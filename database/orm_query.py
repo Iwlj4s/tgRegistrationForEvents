@@ -1,4 +1,4 @@
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.models import Users, Events, UsersEvents, ClosedEvents
@@ -54,6 +54,14 @@ async def orm_get_events_id(session: AsyncSession, event_id: int):
     result = await session.execute(query)
     event = result.scalar()
     return event
+
+
+# Get User subscribed events
+async def orm_get_user_subscribed_events(session: AsyncSession, user_id: int):
+    query = select(UsersEvents).where(UsersEvents.user_tg_id == int(user_id))
+    result = await session.execute(query)
+    user_events = result.scalars().all()  # Fetch all results as a list
+    return user_events
 
 
 # Update Events
@@ -135,6 +143,13 @@ async def orm_get_user_id_by_event_id(session: AsyncSession, event_id: int):
     result = await session.execute(query)
     tg_id = result.scalar()
     return tg_id
+
+
+# Unsubscribe from event
+async def orm_unsubscribe_from_event(session: AsyncSession, event_id: int, user_id: int):
+    query = delete(UsersEvents).where(and_(UsersEvents.user_event_id == event_id, UsersEvents.user_tg_id == user_id))
+    await session.execute(query)
+    await session.commit()
 
 
 # ADMIN stuff #
