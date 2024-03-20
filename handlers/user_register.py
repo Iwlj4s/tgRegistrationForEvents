@@ -16,7 +16,8 @@ from keyboards.inline import get_callback_btns
 
 from user_data.get_user_info import get_user_info
 
-from checks.check_user_input import user_id_already_in_db, user_input_id_event_is_correct, user_try_one_more
+from checks.check_user_input import (user_id_already_in_db, user_input_id_event_is_correct, user_try_one_more,
+                                     user_in_users_events, user_in_users_events_for_unsubscribe)
 
 from database.models import Events
 from database.orm_query import orm_user_add_info, orm_get_events, orm_get_user_by_tg_id, orm_save_user_event_info, \
@@ -198,7 +199,7 @@ async def user_event_registration(message: Message, state: FSMContext, session: 
                              )
 
 
-# add user in event
+# Add user in event
 @user_registration_router.callback_query(F.data.startswith("event_registration_"))
 async def process_event_registration(callback_query: CallbackQuery, state: FSMContext, session: AsyncSession):
     event_id = int(callback_query.data.split('_')[-1])
@@ -222,10 +223,16 @@ async def process_event_registration(callback_query: CallbackQuery, state: FSMCo
     await callback_query.message.answer(f"Вы успешно записаны на мероприятие {event_name}")
 
 
-# Unsubscribe from event
+# UNSUBSCRIBE from UsersEvents
 @user_registration_router.message(F.text.lower() == "отписаться от мероприятия")
 async def unsubscribe_from_event(message: Message, session: AsyncSession):
-    await message.answer("Список мероприятий:")
+    check_user = await user_in_users_events(session=session, user_tg_id=message.from_user.id)
+
+    if not check_user:
+        await message.answer("Вы не записаны на мероприятия")
+        return
+
+    await message.answer("Список ваших мероприятий:")
     for event in await orm_get_user_subscribed_events(session=session, user_id=message.from_user.id):
         event_by_id = await orm_get_events_id(session=session, event_id=event.id)
         await message.answer(f"{event.user_event_name}\n"
@@ -239,11 +246,23 @@ async def unsubscribe_from_event(message: Message, session: AsyncSession):
 
 
 @user_registration_router.callback_query(F.data.startswith("unsubscribe_from_event_"))
-async def process_event_registration(callback_query: CallbackQuery, session: AsyncSession):
+async def unsubscribe_from_event_(callback_query: CallbackQuery, session: AsyncSession):
     event_id = int(callback_query.data.split('_')[-1])
     user_id = callback_query.from_user.id
+
+    # Get the event name before unsubscribing
+    event = await orm_get_events_id(session=session, event_id=event_id)
+    event_name = event.event_name
+
+    check_user = await user_in_users_events_for_unsubscribe(session=session,
+                                                            user_tg_id=callback_query.from_user.id,
+                                                            user_event_id=event_id)
+
+    if not check_user:
+        await callback_query.message.answer(f"Вы не записаны на мероприятие {event_name}")
+        return
 
     await orm_unsubscribe_from_event(session=session, event_id=event_id, user_id=user_id)
 
     await callback_query.answer("Вы отписались от мероприятия!")
-    await callback_query.message.answer(f"Вы отписались от мероприятия!")
+    await callback_query.message.answer(f"Вы отписались от мероприятия! {event_name}")
