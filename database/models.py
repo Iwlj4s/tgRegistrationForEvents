@@ -36,6 +36,14 @@ class UsersEvents(Base):
     user_email: Mapped[str] = mapped_column(Text, nullable=False)
 
 
+class ClosedEvents(Base):
+    __tablename__ = 'closedEvents'
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
+    event_name: Mapped[str] = mapped_column(Text, nullable=False)
+    event_date: Mapped[str] = mapped_column(Text, nullable=False)
+    event_time: Mapped[str] = mapped_column(Text, nullable=False)
+
+
 class Admins(Base):
     __tablename__ = 'admins'
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

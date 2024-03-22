@@ -11,23 +11,22 @@ from sqlalchemy import select
 
 # My Imports #
 from keyboards.reply import start_registration_keyboard, confirm_or_change_user_info_by_user, get_keyboard, \
-    after_registration_user_keyboard
+    after_registration_user_keyboard, cancel_or_back_user
 from keyboards.inline import get_callback_btns
 
 from user_data.get_user_info import get_user_info
 
-from checks.check_user_input import user_id_already_in_db, user_input_id_event_is_correct, user_try_one_more
+from checks.check_user_input import (user_id_already_in_db, user_input_id_event_is_correct, user_try_one_more,
+                                     user_in_users_events, user_in_users_events_for_unsubscribe)
 
 from database.models import Events
-from database.orm_query import orm_user_add_info, orm_get_events, orm_get_user_by_tg_id, orm_save_user_event_info
-
+from database.orm_query import orm_user_add_info, orm_get_events, orm_get_user_by_tg_id, orm_save_user_event_info, \
+    orm_get_user_subscribed_events, orm_get_events_id, orm_unsubscribe_from_event
 
 user_registration_router = Router()
 
 
 # STATE MACHINE #
-
-
 class UserRegistration(StatesGroup):
     # user_choose_event_registration = State()
     user_event_registration_name = State()
@@ -41,10 +40,6 @@ class UserRegistration(StatesGroup):
         'UserRegistration:user_event_registration_phone': 'Заново введите свой телефон: ',
         'UserRegistration:user_event_registration_email': 'Заново введите свой email: '
     }
-
-
-class EventRegistration(StatesGroup):
-    user_event_registration_event = State()
 
 
 # Start Command #
@@ -62,7 +57,7 @@ async def events_list(message: Message, session: AsyncSession):
     await message.answer("Список мероприятий:")
     for event in await orm_get_events(session=session):
         await message.answer(f"{event.event_name}\n"
-                             f"User event_id - {event.id}\n"
+                             f"Id мероприятия - {event.id}\n"
                              f"Дата мероприятия - {event.event_date}\n"
                              f"Начало мероприятия - {event.event_time}\n")
 
@@ -82,7 +77,7 @@ async def user_registration(message: Message, state: FSMContext, session: AsyncS
 
     await message.answer("Введите свое имя: ",
                          reply_markup=ReplyKeyboardRemove())
-    # WAITING EVENT ID #
+    # WAITING USER NAME #
     await state.set_state(UserRegistration.user_event_registration_name)
 
 
@@ -94,13 +89,14 @@ async def cancel_handler(message: Message, state: FSMContext):
         return
 
     await state.clear()
-    await message.answer("Все действия отменены", reply_markup=start_registration_keyboard)
+    await message.answer("Все действия отменены", reply_markup=after_registration_user_keyboard)
 
 
 # BACK #
 @user_registration_router.message(StateFilter('*'), F.text.lower() == "изменить предыдущее поле")
 @user_registration_router.message(StateFilter('*'), Command("Изменить предыдущее поле"))
 async def back_handler(message: Message, state: FSMContext):
+    print("Back Pressed!")
     current_state = await state.get_state()
 
     if current_state == UserRegistration.user_event_registration_name:
@@ -122,7 +118,8 @@ async def back_handler(message: Message, state: FSMContext):
 async def user_enter_name(message: Message, state: FSMContext):
     await state.update_data(user_name=message.text.lower())
 
-    await message.answer("Введите свой номер телефона: ")
+    await message.answer("Введите свой номер телефона: ",
+                         reply_markup=cancel_or_back_user)
     # WAITING USER PHONE #
     await state.set_state(UserRegistration.user_event_registration_phone)
 
@@ -171,6 +168,7 @@ async def user_confirm(message: Message, state: FSMContext, session: AsyncSessio
     await state.clear()
 
 
+# Check user
 @user_registration_router.message(F.text.lower() == "посмотреть пользователя")
 async def look_user(message: Message, state: FSMContext, session: AsyncSession):
     user_tg_id = message.from_user.id
@@ -201,7 +199,7 @@ async def user_event_registration(message: Message, state: FSMContext, session: 
                              )
 
 
-# CONFIRM INFO #
+# Add user in event
 @user_registration_router.callback_query(F.data.startswith("event_registration_"))
 async def process_event_registration(callback_query: CallbackQuery, state: FSMContext, session: AsyncSession):
     event_id = int(callback_query.data.split('_')[-1])
@@ -224,3 +222,47 @@ async def process_event_registration(callback_query: CallbackQuery, state: FSMCo
     await callback_query.answer("Вы успешно записаны на мероприятие!")
     await callback_query.message.answer(f"Вы успешно записаны на мероприятие {event_name}")
 
+
+# UNSUBSCRIBE from UsersEvents
+@user_registration_router.message(F.text.lower() == "отписаться от мероприятия")
+async def unsubscribe_from_event(message: Message, session: AsyncSession):
+    check_user = await user_in_users_events(session=session, user_tg_id=message.from_user.id)
+
+    if not check_user:
+        await message.answer("Вы не записаны на мероприятия")
+        return
+
+    await message.answer("Список ваших мероприятий:")
+    for event in await orm_get_user_subscribed_events(session=session, user_id=message.from_user.id):
+        event_by_id = await orm_get_events_id(session=session, event_id=event.id)
+        await message.answer(f"{event.user_event_name}\n"
+                             f"Id мероприятия - {event.user_event_id}\n"
+                             f"Дата мероприятия - {event_by_id.event_date}\n"
+                             f"Начало мероприятия - {event_by_id.event_time}\n",
+                             reply_markup=get_callback_btns(btns={
+                                 'Отписаться от мероприятия': f'unsubscribe_from_event_{event.user_event_id}'
+                             })
+                             )
+
+
+@user_registration_router.callback_query(F.data.startswith("unsubscribe_from_event_"))
+async def unsubscribe_from_event_(callback_query: CallbackQuery, session: AsyncSession):
+    event_id = int(callback_query.data.split('_')[-1])
+    user_id = callback_query.from_user.id
+
+    # Get the event name before unsubscribing
+    event = await orm_get_events_id(session=session, event_id=event_id)
+    event_name = event.event_name
+
+    check_user = await user_in_users_events_for_unsubscribe(session=session,
+                                                            user_tg_id=callback_query.from_user.id,
+                                                            user_event_id=event_id)
+
+    if not check_user:
+        await callback_query.message.answer(f"Вы не записаны на мероприятие {event_name}")
+        return
+
+    await orm_unsubscribe_from_event(session=session, event_id=event_id, user_id=user_id)
+
+    await callback_query.answer("Вы отписались от мероприятия!")
+    await callback_query.message.answer(f"Вы отписались от мероприятия! {event_name}")
