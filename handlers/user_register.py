@@ -54,12 +54,24 @@ async def cmd_start(message: Message):
 # EVENTS list #
 @user_registration_router.message(or_f(Command("event"), (F.text.lower() == "список мероприятий")))
 async def events_list(message: Message, session: AsyncSession):
+    events_message = "Список мероприятий:\n"
+    user_id = message.from_user.id
     await message.answer("Список мероприятий:")
     for event in await orm_get_events(session=session):
-        await message.answer(f"{event.event_name}\n"
-                             f"Id мероприятия - {event.id}\n"
-                             f"Дата мероприятия - {event.event_date}\n"
-                             f"Начало мероприятия - {event.event_time}\n")
+        user_subscribed = await user_in_users_events_for_unsubscribe(session=session,
+                                                                     user_tg_id=user_id, user_event_id=event.id)
+
+        event_info = f"Id мероприятия - {event.id}\n" \
+                     f"Дата мероприятия - {event.event_date}\n" \
+                     f"Начало мероприятия - {event.event_time}\n"
+
+        if user_subscribed:
+            event_info = f"Вы записаны на - {event.event_name}\n" + event_info
+
+        else:
+            event_info = f"{event.event_name}\n" + event_info
+
+        await message.answer(event_info)
 
 
 # USER REGISTRATION #
@@ -234,7 +246,12 @@ async def unsubscribe_from_event(message: Message, session: AsyncSession):
 
     await message.answer("Список ваших мероприятий:")
     for event in await orm_get_user_subscribed_events(session=session, user_id=message.from_user.id):
-        event_by_id = await orm_get_events_id(session=session, event_id=event.id)
+        event_by_id = await orm_get_events_id(session=session, event_id=event.user_event_id)
+
+        if event_by_id is None:
+            await message.answer("Ошибка: Информация о мероприятии не найдена.")
+            continue
+
         await message.answer(f"{event.user_event_name}\n"
                              f"Id мероприятия - {event.user_event_id}\n"
                              f"Дата мероприятия - {event_by_id.event_date}\n"
