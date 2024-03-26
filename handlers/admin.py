@@ -10,11 +10,12 @@ from aiogram.types import ReplyKeyboardRemove, CallbackQuery
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from checks.check_user_input import user_id_already_in_db
 # My Imports #
 from keyboards.reply import (start_registration_keyboard, start_admin_keyboard,
                              confirm_or_change_user_info_by_admin, confirm_or_change_event_info_by_admin,
                              cancel_or_back_for_user_change_admin,
-                             cancel_or_back_for_add_event_admin)
+                             cancel_or_back_for_add_event_admin, after_registration_user_keyboard)
 from keyboards.inline import get_callback_btns
 
 from user_data.get_user_info import get_user_info, get_user_data_for_admin
@@ -25,7 +26,7 @@ from database.models import Admins
 from database.orm_query import orm_get_users, orm_delete_user, orm_get_events, orm_get_user, orm_update_user, \
     orm_delete_user_from_events, orm_update_users_events, orm_add_event, orm_delete_event, \
     orm_delete_event_from_users_events, orm_get_events_id, orm_update_users_events_by_event_id, orm_update_event, \
-    orm_add_info_in_closed_events
+    orm_add_info_in_closed_events, orm_get_user_by_tg_id
 
 admin_router = Router()
 
@@ -81,9 +82,15 @@ async def admin_login(message: Message, session: AsyncSession):
 
 # Quit from admin #
 @admin_router.message(F.text.lower() == "выйти из администратора")
-async def exit_from_admin(message: Message):
-    await message.answer("Вы вышли из роли администратора",
-                         reply_markup=start_registration_keyboard)
+async def exit_from_admin(message: Message, session: AsyncSession):
+    if user_id_already_in_db(session=session, tg_id=message.from_user.id):
+        user = await orm_get_user_by_tg_id(session=session, tg_id=message.from_user.id)
+        if user:
+            await message.answer("Вы вышли из роли администратора",
+                                 reply_markup=after_registration_user_keyboard)
+    else:
+        await message.answer("Вы вышли из роли администратора",
+                             reply_markup=start_registration_keyboard)
 
 
 # USER STUFF #
