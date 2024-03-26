@@ -46,9 +46,9 @@ async def user_in_users_events(session, user_tg_id):
 
 # Check user in UsersEvents for unsubscribe_from_event_
 async def user_in_users_events_for_unsubscribe(session, user_tg_id, user_event_id):
-    user_tg_id = await orm_get_users_events_by_tg_id(session=session, tg_id=int(user_tg_id))
-    user_event_id = await orm_get_user_id_by_event_id(session=session, event_id=int(user_event_id))
-    if user_tg_id and user_event_id:
+    tg_id = await orm_get_users_events_by_tg_id(session=session, tg_id=int(user_tg_id))
+    event_id = await orm_get_user_id_by_event_id(session=session, event_id=int(user_event_id))
+    if tg_id and event_id:
         return True
 
     else:
