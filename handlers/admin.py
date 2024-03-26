@@ -126,14 +126,14 @@ async def change_user(callback: CallbackQuery, state: FSMContext, session: Async
 
     await callback.answer()
     await callback.message.answer("Измените имя пользователя: ",
-                                  reply_markup=ReplyKeyboardRemove())
+                                  reply_markup=cancel_or_back_for_user_change_admin)
 
     # WAITING USER NAME #
     await state.set_state(ChangeUserInfo.change_user_event_registration_name)
 
 
 # CANCEL #
-@admin_router.message(StateFilter('*'), F.text.lower() == "отмена")
+@admin_router.message(StateFilter('*'), F.text.lower() == "[admin] отмена")
 @admin_router.message(StateFilter('*'), Command("Отмена"))
 async def cancel_handler(message: Message, state: FSMContext):
     current_state = await state.get_state()
@@ -187,20 +187,29 @@ async def admin_back_event_add_handler(message: Message, state: FSMContext):
 
 
 # GET USER NAME
-@admin_router.message(ChangeUserInfo.change_user_event_registration_name, F.text)
+@admin_router.message(ChangeUserInfo.change_user_event_registration_name,
+                      or_f(F.text, F.text == "[Admin-user] Пропустить поле"))
 async def admin_enter_name(message: Message, state: FSMContext):
-    await state.update_data(user_name=message.text.lower())
+    if message.text == "[Admin-user] Пропустить поле":
+        await state.update_data(user_name=ChangeUserInfo.user_for_change.name)
 
-    await message.answer("Измените номер телефона пользователя: ",
-                         reply_markup=cancel_or_back_for_user_change_admin)
+    else:
+        await state.update_data(user_name=message.text.lower())
+
+    await message.answer("Измените номер телефона пользователя: ")
     # WAITING USER PHONE #
     await state.set_state(ChangeUserInfo.change_user_event_registration_phone)
 
 
 # GET USER PHONE
-@admin_router.message(ChangeUserInfo.change_user_event_registration_phone, F.text)
+@admin_router.message(ChangeUserInfo.change_user_event_registration_phone,
+                      or_f(F.text, F.text == "[Admin-user] Пропустить поле"))
 async def admin_enter_phone(message: Message, state: FSMContext):
-    await state.update_data(user_phone=message.text)
+    if message.text == "[Admin-user] Пропустить поле":
+        await state.update_data(user_phone=ChangeUserInfo.user_for_change.phone)
+
+    else:
+        await state.update_data(user_phone=message.text)
 
     await message.answer("Измените email пользователя: ")
     # WAITING USER EMAIL #
@@ -208,9 +217,15 @@ async def admin_enter_phone(message: Message, state: FSMContext):
 
 
 # GET USER EMAIL
-@admin_router.message(ChangeUserInfo.change_user_event_registration_email, F.text)
+@admin_router.message(ChangeUserInfo.change_user_event_registration_email,
+                      or_f(F.text, F.text == "[Admin-user] Пропустить поле"))
 async def admin_enter_email(message: Message, state: FSMContext):
-    await state.update_data(user_email=message.text)
+    if message.text == "[Admin-user] Пропустить поле":
+        await state.update_data(user_email=ChangeUserInfo.user_for_change.email)
+
+    else:
+        await state.update_data(user_email=message.text)
+
     data = await state.get_data()
 
     info = get_user_info(data=data)
@@ -317,9 +332,14 @@ async def change_event(callback: CallbackQuery, state: FSMContext, session: Asyn
 
 
 # Event Name
-@admin_router.message(AddEvent.add_event_name, F.text)
+@admin_router.message(AddEvent.add_event_name,
+                      or_f(F.text, F.text == "[Admin-event] Пропустить поле"))
 async def add_event_name(message: Message, state: FSMContext):
-    await state.update_data(event_name=message.text.title())
+    if message.text == "[Admin-event] Пропустить поле":
+        await state.update_data(event_name=AddEvent.event_for_change.event_name)
+
+    else:
+        await state.update_data(event_name=message.text.title())
 
     await message.answer("Введите дату мероприятия: ")
 
@@ -328,9 +348,14 @@ async def add_event_name(message: Message, state: FSMContext):
 
 
 # Event Date
-@admin_router.message(AddEvent.add_event_date, F.text)
+@admin_router.message(AddEvent.add_event_date,
+                      or_f(F.text, F.text == "[Admin-event] Пропустить поле"))
 async def add_event_date(message: Message, state: FSMContext):
-    await state.update_data(event_date=message.text)
+    if message.text == "[Admin-event] Пропустить поле":
+        await state.update_data(event_date=AddEvent.event_for_change.event_date)
+
+    else:
+        await state.update_data(event_date=message.text)
 
     await message.answer("Введите время мероприятия: ")
 
@@ -339,9 +364,14 @@ async def add_event_date(message: Message, state: FSMContext):
 
 
 # Event Time
-@admin_router.message(AddEvent.add_event_time, F.text)
+@admin_router.message(AddEvent.add_event_time,
+                      or_f(F.text, F.text == "[Admin-event] Пропустить поле"))
 async def add_event_time(message: Message, state: FSMContext):
-    await state.update_data(event_time=message.text)
+    if message.text == "[Admin-event] Пропустить поле":
+        await state.update_data(event_time=AddEvent.event_for_change.event_time)
+
+    else:
+        await state.update_data(event_time=message.text)
 
     data = await state.get_data()
     info = get_event_info(data=data)
