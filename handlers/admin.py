@@ -150,7 +150,6 @@ async def cancel_handler(message: Message, state: FSMContext):
 # BACK FOR USER #
 @admin_router.message(StateFilter('*'), F.text.lower() == "[admin-user] изменить предыдущее поле")
 async def admin_back_user_info_handler(message: Message, state: FSMContext):
-    print("XUi")
     current_state = await state.get_state()
 
     if current_state == ChangeUserInfo.change_user_event_registration_name:
@@ -170,7 +169,6 @@ async def admin_back_user_info_handler(message: Message, state: FSMContext):
 # BACK FOR EVENT #
 @admin_router.message(StateFilter('*'), F.text.lower() == "[admin-event] изменить предыдущее поле")
 async def admin_back_event_add_handler(message: Message, state: FSMContext):
-    print("Back Pressed!")
     current_state = await state.get_state()
 
     if current_state == AddEvent.add_event_name:
