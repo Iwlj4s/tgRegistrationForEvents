@@ -10,8 +10,12 @@ from aiogram.types import ReplyKeyboardRemove, CallbackQuery
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from checks.check_user_input import user_id_already_in_db
+
 # My Imports #
+# from app import bot, dp
+
+from checks.check_user_input import user_id_already_in_db
+
 from keyboards.reply import (start_registration_keyboard, start_admin_keyboard,
                              confirm_or_change_user_info_by_admin, confirm_or_change_event_info_by_admin,
                              cancel_or_back_for_user_change_admin,
@@ -26,7 +30,7 @@ from database.models import Admins
 from database.orm_query import orm_get_users, orm_delete_user, orm_get_events, orm_get_user, orm_update_user, \
     orm_delete_user_from_events, orm_update_users_events, orm_add_event, orm_delete_event, \
     orm_delete_event_from_users_events, orm_get_events_id, orm_update_users_events_by_event_id, orm_update_event, \
-    orm_add_info_in_closed_events, orm_get_user_by_tg_id
+    orm_add_info_in_closed_events, orm_get_user_by_tg_id, orm_get_users_from_users_events
 
 admin_router = Router()
 
@@ -65,7 +69,7 @@ class AddEvent(StatesGroup):
 
 # Start For admin #
 @admin_router.message(Command("admin"))
-async def admin_login(message: Message, session: AsyncSession):
+async def admin_login(message: Message, session: AsyncSession, bot):
     db_adm = select(Admins.tg_id)
     admins_db = await session.execute(db_adm)
 
@@ -75,9 +79,11 @@ async def admin_login(message: Message, session: AsyncSession):
     print(f"Msg from user: {message.from_user.id}")
 
     if message.from_user.id not in admin_ids:
-        await message.answer("У вас нет прав", reply_markup=start_registration_keyboard)
+        await bot.send_message(message.from_user.id, "У вас нет прав", reply_markup=start_registration_keyboard)
+        # await message.answer("У вас нет прав", reply_markup=start_registration_keyboard)
     else:
-        await message.answer("Вы зашли как администратор", reply_markup=start_admin_keyboard)
+        # await message.answer("Вы зашли как администратор", reply_markup=start_admin_keyboard)
+        await bot.send_message(message.from_user.id, "Вы зашли как администратор",reply_markup=start_admin_keyboard)
 
 
 # Quit from admin #
@@ -295,7 +301,7 @@ async def add_event(message: Message, state: FSMContext):
 
 # Close Event
 @admin_router.callback_query(F.data.startswith('close_event_'))
-async def close_event(callback: CallbackQuery, session: AsyncSession):
+async def close_event(callback: CallbackQuery, session: AsyncSession, bot):
     event_id = callback.data.split("_")[-1]
     event = await orm_get_events_id(session=session, event_id=int(event_id))
 
