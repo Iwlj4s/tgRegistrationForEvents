@@ -305,6 +305,13 @@ async def close_event(callback: CallbackQuery, session: AsyncSession, bot):
     event_id = callback.data.split("_")[-1]
     event = await orm_get_events_id(session=session, event_id=int(event_id))
 
+    for user in await orm_get_users_from_users_events(session=session, event_id=int(event_id)):
+        await bot.send_message(user.user_tg_id, f"{user.user_name.title()}, мероприятие {user.user_event_name} закрыто!")
+        print(user.user_event_id)
+        print(user.user_tg_id)
+        print(user.user_name)
+        print(user.user_event_name)
+
     await orm_add_info_in_closed_events(session=session, event=event)   # Add closing event in closedEvents
     await orm_delete_event(session=session, event_id=int(event_id))     # Delete closing event from Events
     await orm_delete_event_from_users_events(session=session, event_id=int(event_id))   # Delete closing event from
