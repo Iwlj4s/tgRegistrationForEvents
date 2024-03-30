@@ -1,4 +1,4 @@
-from sqlalchemy import select, update, delete, and_
+from sqlalchemy import select, update, delete, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.models import Users, Events, UsersEvents, ClosedEvents
@@ -44,6 +44,13 @@ async def orm_get_user_by_tg_id(session: AsyncSession, tg_id: int):
 # Get events
 async def orm_get_events(session: AsyncSession):
     query = select(Events)
+    result = await session.execute(query)
+    return result.scalars().all()
+
+
+# Get users by event.id in usersEvents
+async def orm_get_users_from_users_events(session: AsyncSession, event_id: int):
+    query = select(UsersEvents).where(UsersEvents.user_event_id == int(event_id))
     result = await session.execute(query)
     return result.scalars().all()
 
@@ -185,7 +192,7 @@ async def orm_change_user_info(session: AsyncSession, user_id: int, data):
 # Add info in ClosedEvents #
 async def orm_add_info_in_closed_events(session: AsyncSession, event: Events):
     obj = ClosedEvents(
-        id=event.id,
+        event_id=event.id,
         event_name=event.event_name,
         event_date=event.event_date,
         event_time=event.event_time,
@@ -211,8 +218,27 @@ async def orm_delete_user_from_events(session: AsyncSession, user_id: int):
 
 # Add Event
 async def orm_add_event(session: AsyncSession, data, message):
+    # TODO: REFACTOR THIS SOON AS YOU CAN PLEASE
+    max_id_query = select(func.max(Events.id))
+    max_id_result = await session.execute(max_id_query)
+    events_max_id = max_id_result.scalar()
+
+    max_id_query_closed = select(func.max(ClosedEvents.event_id))
+    max_id_result_closed = await session.execute(max_id_query_closed)
+    closed_events_max_id = max_id_result_closed.scalar() or 0
+
+    max_id = events_max_id
+
+    if max_id is None:
+        max_id = closed_events_max_id
+    elif events_max_id < closed_events_max_id:
+        max_id = closed_events_max_id
+
+    else:
+        max_id = events_max_id
 
     obj = Events(
+        id=max_id + 1,
         event_name=data['event_name'],
         event_date=data['event_date'],
         event_time=data['event_time'],
