@@ -10,7 +10,7 @@ async def orm_user_add_info(session: AsyncSession, data: dict, message):
     obj = Users(
         tg_id=message.from_user.id,
         name=data['user_name'],
-        phone=int(data['user_phone']),
+        phone=data['user_phone'],
         email=data['user_email'],
     )
 
@@ -25,7 +25,7 @@ async def orm_update_user(session: AsyncSession, user_id: int, data, message):
     query = update(Users).where(Users.id == user_id).values(
         tg_id=message.from_user.id,
         name=data['user_name'],
-        phone=int(data['user_phone']),
+        phone=data['user_phone'],
         email=data['user_email'],)
 
     await session.execute(query)
@@ -115,7 +115,7 @@ async def orm_update_users_events(session: AsyncSession, user_tg_id: int, data: 
 
     query = update(UsersEvents).where(UsersEvents.user_tg_id == user_tg_id).values(
         user_name=data['user_name'],
-        user_phone=int(data['user_phone']),
+        user_phone=data['user_phone'],
         user_email=data['user_email']
     )
     result = await session.execute(query)
@@ -181,7 +181,7 @@ async def orm_change_user_info(session: AsyncSession, user_id: int, data):
     query = update(Users).where(Users.id == user_id).values(
         event_id=int(),
         name=data['user_name'],
-        phone=int(data['user_phone']),
+        phone=data['user_phone'],
         email=data['user_email'],
     )
 
