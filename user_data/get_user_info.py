@@ -13,6 +13,6 @@ def get_user_data_for_admin(data):
     user_phone = data.get("user_phone")
     user_email = data.get("user_email")
 
-    return (f"Ваше имя - {user_name}\n"
-            f"Ваш телефон - {user_phone}\n"
-            f"Ваша почта - {user_email}\n")
+    return (f"Имя пользователя - {user_name}\n"
+            f"Телефон пользователя - {user_phone}\n"
+            f"Эл.почта пользователя - {user_email}\n")

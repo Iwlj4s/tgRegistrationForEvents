@@ -73,7 +73,8 @@ cancel_or_back_for_user_change_admin = ReplyKeyboardMarkup(
     keyboard=[
         [
             KeyboardButton(text="[Admin-user] Изменить предыдущее поле"),
-            KeyboardButton(text="отмена")
+            KeyboardButton(text="[Admin-user] Пропустить поле"),
+            KeyboardButton(text="[Admin] отмена")
 
         ],
     ],
@@ -85,7 +86,8 @@ cancel_or_back_for_add_event_admin = ReplyKeyboardMarkup(
     keyboard=[
         [
             KeyboardButton(text="[Admin-event] Изменить предыдущее поле"),
-            KeyboardButton(text="отмена")
+            KeyboardButton(text="[Admin-event] Пропустить поле"),
+            KeyboardButton(text="[Admin] отмена")
 
         ],
     ],
@@ -98,7 +100,7 @@ confirm_or_change_user_info_by_admin = ReplyKeyboardMarkup(
         [
             KeyboardButton(text="Изменить информацию"),
             KeyboardButton(text="[Admin-user] Изменить предыдущее поле"),
-            KeyboardButton(text="отмена")
+            KeyboardButton(text="[Admin] отмена")
 
         ],
     ],
@@ -111,7 +113,7 @@ confirm_or_change_event_info_by_admin = ReplyKeyboardMarkup(
         [
             KeyboardButton(text="Добавить мероприятие"),
             KeyboardButton(text="[Admin-event] Изменить предыдущее поле"),
-            KeyboardButton(text="отмена")
+            KeyboardButton(text="[Admin] отмена")
 
         ],
     ],
