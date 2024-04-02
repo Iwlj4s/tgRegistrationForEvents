@@ -21,7 +21,7 @@ class Users(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     tg_id: Mapped[int] = mapped_column(Integer, nullable=False)
     name: Mapped[str] = mapped_column(String(150), nullable=False)
-    phone: Mapped[int] = mapped_column(Integer, nullable=False)
+    phone: Mapped[str] = mapped_column(String(20), nullable=False)
     email: Mapped[str] = mapped_column(Text, nullable=False)
 
 
@@ -32,7 +32,7 @@ class UsersEvents(Base):
     user_event_name: Mapped[str] = mapped_column(Text, nullable=False)
     user_tg_id: Mapped[int] = mapped_column(Integer, nullable=False)
     user_name: Mapped[str] = mapped_column(String(150), nullable=False)
-    user_phone: Mapped[int] = mapped_column(Integer, nullable=False)
+    user_phone: Mapped[str] = mapped_column(String(20), nullable=False)
     user_email: Mapped[str] = mapped_column(Text, nullable=False)
 
 

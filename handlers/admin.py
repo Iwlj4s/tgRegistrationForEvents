@@ -10,11 +10,11 @@ from aiogram.types import ReplyKeyboardRemove, CallbackQuery
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-
 # My Imports #
 # from app import bot, dp
 
-from checks.check_user_input import user_id_already_in_db
+from checks.check_user_input import user_id_already_in_db, validate_date_input, validate_time_input, \
+    validate_email_input, validate_phone_input
 
 from keyboards.reply import (start_registration_keyboard, start_admin_keyboard,
                              confirm_or_change_user_info_by_admin, confirm_or_change_event_info_by_admin,
@@ -24,7 +24,6 @@ from keyboards.inline import get_callback_btns
 
 from user_data.get_user_info import get_user_info, get_user_data_for_admin
 from user_data.get_event_info import get_event_info
-
 
 from database.models import Admins
 from database.orm_query import orm_get_users, orm_delete_user, orm_get_events, orm_get_user, orm_update_user, \
@@ -83,7 +82,7 @@ async def admin_login(message: Message, session: AsyncSession, bot):
         # await message.answer("У вас нет прав", reply_markup=start_registration_keyboard)
     else:
         # await message.answer("Вы зашли как администратор", reply_markup=start_admin_keyboard)
-        await bot.send_message(message.from_user.id, "Вы зашли как администратор",reply_markup=start_admin_keyboard)
+        await bot.send_message(message.from_user.id, "Вы зашли как администратор", reply_markup=start_admin_keyboard)
 
 
 # Quit from admin #
@@ -222,7 +221,12 @@ async def admin_enter_phone(message: Message, state: FSMContext):
         await state.update_data(user_phone=ChangeUserInfo.user_for_change.phone)
 
     else:
-        await state.update_data(user_phone=message.text)
+        if not await validate_phone_input(message.text):
+            await message.answer(
+                "Некорректный формат номера телефона.\nПожалуйста, введите номер в формате +7(XXX)-XXX-XX-XX.")
+            return
+
+        await state.update_data(user_phone=str(message.text))
 
     await message.answer("Измените email пользователя: ")
     # WAITING USER EMAIL #
@@ -237,7 +241,12 @@ async def admin_enter_email(message: Message, state: FSMContext):
         await state.update_data(user_email=ChangeUserInfo.user_for_change.email)
 
     else:
-        await state.update_data(user_email=message.text)
+        user_email = await validate_email_input(message.text)  # Check date format is day-month-year
+        if user_email is None:
+            await message.answer("Некорректный формат почты.\nПожалуйста, введите почту в формате 'abcd123@gmail.com':")
+            return
+
+        await state.update_data(user_email=user_email)
 
     data = await state.get_data()
 
@@ -306,15 +315,16 @@ async def close_event(callback: CallbackQuery, session: AsyncSession, bot):
     event = await orm_get_events_id(session=session, event_id=int(event_id))
 
     for user in await orm_get_users_from_users_events(session=session, event_id=int(event_id)):
-        await bot.send_message(user.user_tg_id, f"{user.user_name.title()}, мероприятие {user.user_event_name} закрыто!")
+        await bot.send_message(user.user_tg_id,
+                               f"{user.user_name.title()}, мероприятие {user.user_event_name} закрыто!")
         print(user.user_event_id)
         print(user.user_tg_id)
         print(user.user_name)
         print(user.user_event_name)
 
-    await orm_add_info_in_closed_events(session=session, event=event)   # Add closing event in closedEvents
-    await orm_delete_event(session=session, event_id=int(event_id))     # Delete closing event from Events
-    await orm_delete_event_from_users_events(session=session, event_id=int(event_id))   # Delete closing event from
+    await orm_add_info_in_closed_events(session=session, event=event)  # Add closing event in closedEvents
+    await orm_delete_event(session=session, event_id=int(event_id))  # Delete closing event from Events
+    await orm_delete_event_from_users_events(session=session, event_id=int(event_id))  # Delete closing event from
     # usersEvents
 
     await callback.answer("Мероприятие закрыто!")
@@ -327,7 +337,7 @@ async def delete_event(callback: CallbackQuery, session: AsyncSession):
     print("Event Delete function start !")
     event_id = callback.data.split("_")[-1]
     await orm_delete_event(session=session, event_id=int(event_id))  # Delete closing event from Events
-    await orm_delete_event_from_users_events(session=session, event_id=int(event_id))   # Delete closing event from
+    await orm_delete_event_from_users_events(session=session, event_id=int(event_id))  # Delete closing event from
     # usersEvents
 
     await callback.answer("Мероприятие удалено!")
@@ -361,7 +371,7 @@ async def add_event_name(message: Message, state: FSMContext):
     else:
         await state.update_data(event_name=message.text.title())
 
-    await message.answer("Введите дату мероприятия: ")
+    await message.answer("Введите дату мероприятия (дд-мм-гггг): ")
 
     # WAITING EVENT DATE #
     await state.set_state(AddEvent.add_event_date)
@@ -375,9 +385,14 @@ async def add_event_date(message: Message, state: FSMContext):
         await state.update_data(event_date=AddEvent.event_for_change.event_date)
 
     else:
-        await state.update_data(event_date=message.text)
+        event_date = await validate_date_input(message.text)  # Check date format is day-month-year
+        if event_date is None:
+            await message.answer("Некорректный формат даты.\nПожалуйста, введите дату в формате 'дд-мм-гггг':")
+            return
 
-    await message.answer("Введите время мероприятия: ")
+        await state.update_data(event_date=str(event_date))
+
+    await message.answer("Введите время мероприятия (часы:минуты): ")
 
     # WAITING EVENT DATE #
     await state.set_state(AddEvent.add_event_time)
@@ -391,7 +406,12 @@ async def add_event_time(message: Message, state: FSMContext):
         await state.update_data(event_time=AddEvent.event_for_change.event_time)
 
     else:
-        await state.update_data(event_time=message.text)
+        event_time = await validate_time_input(message.text)  # Check date format is day-month-year
+        if event_time is None:
+            await message.answer("Некорректный формат времени.\nПожалуйста, введите время в формате 'ч:м':")
+            return
+
+        await state.update_data(event_time=str(event_time))
 
     data = await state.get_data()
     info = get_event_info(data=data)
@@ -413,7 +433,7 @@ async def add_event_time(message: Message, state: FSMContext, session: AsyncSess
     info = get_event_info(data=data)
 
     if AddEvent.event_for_change:
-        await orm_update_event(session=session, event_id=AddEvent.event_for_change.id, data=data)   # Update Events
+        await orm_update_event(session=session, event_id=AddEvent.event_for_change.id, data=data)  # Update Events
         # Update usersEvents
         await orm_update_users_events_by_event_id(session=session, event_id=AddEvent.event_for_change.id, data=data)
 
@@ -430,4 +450,3 @@ async def add_event_time(message: Message, state: FSMContext, session: AsyncSess
 
     await state.clear()
     AddEvent.event_for_change = None
-
