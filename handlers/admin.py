@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # My Imports #
 # from app import bot, dp
 
-from checks.check_user_input import user_id_already_in_db
+from checks.check_user_input import user_id_already_in_db, validate_date_input, validate_time_input
 
 from keyboards.reply import (start_registration_keyboard, start_admin_keyboard,
                              confirm_or_change_user_info_by_admin, confirm_or_change_event_info_by_admin,
@@ -361,7 +361,7 @@ async def add_event_name(message: Message, state: FSMContext):
     else:
         await state.update_data(event_name=message.text.title())
 
-    await message.answer("Введите дату мероприятия: ")
+    await message.answer("Введите дату мероприятия (дд-мм-гггг): ")
 
     # WAITING EVENT DATE #
     await state.set_state(AddEvent.add_event_date)
@@ -375,9 +375,14 @@ async def add_event_date(message: Message, state: FSMContext):
         await state.update_data(event_date=AddEvent.event_for_change.event_date)
 
     else:
-        await state.update_data(event_date=message.text)
+        event_date = await validate_date_input(message.text)  # Check date format is day-month-year
+        if event_date is None:
+            await message.answer("Некорректный формат даты.\nПожалуйста, введите дату в формате 'дд-мм-гггг':")
+            return
 
-    await message.answer("Введите время мероприятия: ")
+        await state.update_data(event_date=str(event_date))
+
+    await message.answer("Введите время мероприятия (часы:минуты): ")
 
     # WAITING EVENT DATE #
     await state.set_state(AddEvent.add_event_time)
@@ -391,7 +396,12 @@ async def add_event_time(message: Message, state: FSMContext):
         await state.update_data(event_time=AddEvent.event_for_change.event_time)
 
     else:
-        await state.update_data(event_time=message.text)
+        event_time = await validate_time_input(message.text)  # Check date format is day-month-year
+        if event_time is None:
+            await message.answer("Некорректный формат времени.\nПожалуйста, введите время в формате 'ч:м':")
+            return
+
+        await state.update_data(event_time=str(event_time))
 
     data = await state.get_data()
     info = get_event_info(data=data)

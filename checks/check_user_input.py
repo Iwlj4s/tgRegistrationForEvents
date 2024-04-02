@@ -1,3 +1,4 @@
+import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.orm_query import (orm_get_user_by_tg_id, orm_get_events_id, orm_get_users_events_by_tg_id,
@@ -53,3 +54,20 @@ async def user_in_users_events_for_unsubscribe(session, user_tg_id, user_event_i
 
     else:
         return False
+
+
+# Check correct Date input
+async def validate_date_input(date_str):
+    try:
+        date = datetime.datetime.strptime(date_str, '%d-%m-%Y').date()
+        return date
+    except ValueError:
+        return None
+
+
+async def validate_time_input(time_str):
+    try:
+        time = datetime.datetime.strptime(time_str, '%H:%M').time()
+        return time
+    except ValueError:
+        return None
