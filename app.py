@@ -8,10 +8,11 @@ from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 from aiogram.types import BotCommandScopeDefault
 
-from handlers.admin import admin_router
 
 # My Imports #
 from handlers.user_register import user_registration_router
+from handlers.admin import admin_router
+from handlers.inspector import inspector_router
 
 from bot_commands.bot_commands_list import user_commands
 
@@ -28,6 +29,7 @@ dp = Dispatcher()
 
 dp.include_router(user_registration_router)
 dp.include_router(admin_router)
+dp.include_router(inspector_router)
 
 
 async def startup(bot):

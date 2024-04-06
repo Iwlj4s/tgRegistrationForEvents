@@ -261,3 +261,5 @@ async def orm_delete_event_from_users_events(session: AsyncSession, event_id: in
     query = delete(UsersEvents).where(UsersEvents.user_event_id == event_id)
     await session.execute(query)
     await session.commit()
+
+# INSPECTOR stuff #

@@ -121,6 +121,20 @@ confirm_or_change_event_info_by_admin = ReplyKeyboardMarkup(
 )
 
 
+# INSPECTOR #
+
+# Start inspector keyboard
+start_inspector_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="..."),
+            KeyboardButton(text="Выйти из проверяющего")
+        ],
+    ],
+    resize_keyboard=True
+)
+
+
 # KeyboardBuilder #
 def get_keyboard(
         *btns: str,
