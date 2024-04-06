@@ -17,7 +17,8 @@ from keyboards.inline import get_callback_btns
 from user_data.get_user_info import get_user_info
 
 from checks.check_user_input import (user_id_already_in_db, user_input_id_event_is_correct, user_try_one_more,
-                                     user_in_users_events, user_in_users_events_for_unsubscribe)
+                                     user_in_users_events, user_in_users_events_for_unsubscribe, validate_phone_input,
+                                     validate_email_input)
 
 from database.models import Events
 from database.orm_query import orm_user_add_info, orm_get_events, orm_get_user_by_tg_id, orm_save_user_event_info, \
@@ -139,7 +140,12 @@ async def user_enter_name(message: Message, state: FSMContext):
 # GET USER PHONE #
 @user_registration_router.message(UserRegistration.user_event_registration_phone, F.text)
 async def user_enter_name(message: Message, state: FSMContext):
-    await state.update_data(user_phone=message.text)
+    if not await validate_phone_input(message.text):
+        await message.answer(
+            "Некорректный формат номера телефона.\nПожалуйста, введите номер в формате +7(XXX)-XXX-XX-XX.")
+        return
+
+    await state.update_data(user_phone=str(message.text))
 
     await message.answer("Введите свой email: ")
     # WAITING USER PHONE #
@@ -149,7 +155,13 @@ async def user_enter_name(message: Message, state: FSMContext):
 # GET USER EMAIL #
 @user_registration_router.message(UserRegistration.user_event_registration_email, F.text)
 async def user_enter_name(message: Message, state: FSMContext):
-    await state.update_data(user_email=message.text)
+    user_email = await validate_email_input(message.text)  # Check date format is day-month-year
+    if user_email is None:
+        await message.answer("Некорректный формат почты.\nПожалуйста, введите почту в формате 'abcd123@gmail.com':")
+        return
+
+    await state.update_data(user_email=user_email)
+
     data = await state.get_data()
 
     info = get_user_info(data=data)

@@ -8,23 +8,11 @@ start_registration_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
             KeyboardButton(text="Регистрация"),
-            KeyboardButton(text="Список мероприятий"),
         ],
     ],
     resize_keyboard=True
 )
 
-# Cancel or Back for User Change admin keyboard
-cancel_or_back_user = ReplyKeyboardMarkup(
-    keyboard=[
-        [
-            KeyboardButton(text="Изменить предыдущее поле"),
-            KeyboardButton(text="отмена")
-
-        ],
-    ],
-    resize_keyboard=True
-)
 
 # confirm registration (by user) keyboard
 confirm_or_change_user_info_by_user = ReplyKeyboardMarkup(
@@ -63,6 +51,18 @@ start_admin_keyboard = ReplyKeyboardMarkup(
             KeyboardButton(text="Просмотр мероприятий"),
             KeyboardButton(text="Добавить мероприятие"),
             KeyboardButton(text="Выйти из администратора")
+        ],
+    ],
+    resize_keyboard=True
+)
+
+# Cancel or Back for User Change admin keyboard
+cancel_or_back_user = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="Изменить предыдущее поле"),
+            KeyboardButton(text="отмена")
+
         ],
     ],
     resize_keyboard=True
