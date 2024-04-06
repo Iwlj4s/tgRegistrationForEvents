@@ -7,6 +7,7 @@ class Base(DeclarativeBase):
     updated: Mapped[DateTime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
 
 
+# TODO: ADD ADDRESS OR CABINET'S NUMBER
 class Events(Base):
     __tablename__ = 'events'
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
