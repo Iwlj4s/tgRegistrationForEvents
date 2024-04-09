@@ -12,6 +12,7 @@ class Events(Base):
     __tablename__ = 'events'
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
     event_name: Mapped[str] = mapped_column(Text, nullable=False)
+    event_address: Mapped[str] = mapped_column(Text, nullable=False)
     event_date: Mapped[str] = mapped_column(Text, nullable=False)
     event_time: Mapped[str] = mapped_column(Text, nullable=False)
 
@@ -31,6 +32,7 @@ class UsersEvents(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_event_id: Mapped[int] = mapped_column(Integer, ForeignKey('events.id'), nullable=False)
     user_event_name: Mapped[str] = mapped_column(Text, nullable=False)
+    user_event_address: Mapped[str] = mapped_column(Text, nullable=False)
     user_tg_id: Mapped[int] = mapped_column(Integer, nullable=False)
     user_name: Mapped[str] = mapped_column(String(150), nullable=False)
     user_phone: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -42,6 +44,7 @@ class ClosedEvents(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     event_id: Mapped[int] = mapped_column(Integer, ForeignKey('events.id'), nullable=False)
     event_name: Mapped[str] = mapped_column(Text, nullable=False)
+    event_address: Mapped[str] = mapped_column(Text, nullable=False)
     event_date: Mapped[str] = mapped_column(Text, nullable=False)
     event_time: Mapped[str] = mapped_column(Text, nullable=False)
 

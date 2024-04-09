@@ -52,6 +52,7 @@ class ChangeUserInfo(StatesGroup):
 
 class AddEvent(StatesGroup):
     add_event_name = State()
+    add_event_address = State()
     add_event_date = State()
     add_event_time = State()
 
@@ -61,6 +62,7 @@ class AddEvent(StatesGroup):
 
     texts = {
         'AddEvent:add_event_name': 'Измените имя мероприятия',
+        'AddEvent:add_event_address': 'Измените адрес мероприятия',
         'AddEvent:add_event_date': 'Измените дату мероприятия',
         'AddEvent:add_event_time': 'Измените время мероприятия'
     }
@@ -287,7 +289,8 @@ async def events_list(message: Message, session: AsyncSession):
     await message.answer("Список мероприятий:")
     for event in await orm_get_events(session=session):
         await message.answer(f"{event.event_name}\n"
-                             f"User event_id - {event.id}\n"
+                             f"Адрес мероприятия - {event.event_address}\n"
+                             f"Id мероприятия - {event.id}\n"
                              f"Дата мероприятия - {event.event_date}\n"
                              f"Начало мероприятия - {event.event_time}\n",
                              reply_markup=get_callback_btns(btns={
@@ -371,9 +374,25 @@ async def add_event_name(message: Message, state: FSMContext):
     else:
         await state.update_data(event_name=message.text.title())
 
-    await message.answer("Введите дату мероприятия (дд-мм-гггг): ")
+    await message.answer("Введите адрес мероприятия: ")
 
     # WAITING EVENT DATE #
+    await state.set_state(AddEvent.add_event_address)
+
+
+# Event Address
+@admin_router.message(AddEvent.add_event_address,
+                      or_f(F.text, F.text == "[Admin-event] Пропустить поле"))
+async def add_event_address(message: Message, state: FSMContext):
+    if message.text == "[Admin-event] Пропустить поле":
+        await state.update_data(event_address=AddEvent.event_for_change.event_address)
+
+    else:
+        await state.update_data(event_address=message.text)
+
+    await message.answer("Введите дату мероприятия (дд-мм-гггг): ")
+
+    # WAITING EVENT ADDRESS #
     await state.set_state(AddEvent.add_event_date)
 
 
@@ -429,11 +448,13 @@ async def add_event_time(message: Message, state: FSMContext):
 @admin_router.message(AddEvent.confirm_or_change_event, F.text.lower() == "добавить мероприятие")
 async def add_event_time(message: Message, state: FSMContext, session: AsyncSession):
     data = await state.get_data()
+    print(data)
 
     info = get_event_info(data=data)
 
     if AddEvent.event_for_change:
         await orm_update_event(session=session, event_id=AddEvent.event_for_change.id, data=data)  # Update Events
+        print(data)
         # Update usersEvents
         await orm_update_users_events_by_event_id(session=session, event_id=AddEvent.event_for_change.id, data=data)
 

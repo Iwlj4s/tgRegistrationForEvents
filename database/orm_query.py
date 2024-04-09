@@ -75,6 +75,7 @@ async def orm_get_user_subscribed_events(session: AsyncSession, user_id: int):
 async def orm_update_event(session: AsyncSession, event_id: int, data):
     query = update(Events).where(Events.id == event_id).values(
         event_name=data["event_name"],
+        event_address=data["event_address"],
         event_date=data["event_date"],
         event_time=data["event_time"])
 
@@ -90,6 +91,10 @@ async def orm_save_user_event_info(session: AsyncSession, tg_id, event_id: int):
     result = await session.execute(events)
     event_name = result.scalar()
 
+    # get event address
+    event_data = await orm_get_events_id(session=session, event_id=int(event_id))
+    event_address = event_data.event_address
+
     # get user info #
     user_tg_id = tg_id
     user_info = await orm_get_user_by_tg_id(session=session, tg_id=int(user_tg_id))
@@ -98,6 +103,7 @@ async def orm_save_user_event_info(session: AsyncSession, tg_id, event_id: int):
     user_event = UsersEvents(
         user_event_id=event_id,
         user_event_name=event_name,
+        user_event_address=event_address,
         user_tg_id=user_info.tg_id,
         user_name=user_info.name,
         user_phone=user_info.phone,
@@ -115,6 +121,7 @@ async def orm_update_users_events(session: AsyncSession, user_tg_id: int, data: 
 
     query = update(UsersEvents).where(UsersEvents.user_tg_id == user_tg_id).values(
         user_name=data['user_name'],
+        event_address=data["event_address"],
         user_phone=data['user_phone'],
         user_email=data['user_email']
     )
@@ -130,7 +137,8 @@ async def orm_update_users_events_by_event_id(session: AsyncSession, event_id: i
     print(f"Data to update: {data}")
 
     query = update(UsersEvents).where(UsersEvents.user_event_id == event_id).values(
-        user_event_name=data['event_name'])
+        user_event_name=data['event_name'],
+        user_event_address=data['event_address'])
 
     result = await session.execute(query)
     await session.commit()
@@ -193,6 +201,7 @@ async def orm_change_user_info(session: AsyncSession, user_id: int, data):
 async def orm_add_info_in_closed_events(session: AsyncSession, event: Events):
     obj = ClosedEvents(
         event_id=event.id,
+        event_address=event.event_address,
         event_name=event.event_name,
         event_date=event.event_date,
         event_time=event.event_time,
@@ -240,6 +249,7 @@ async def orm_add_event(session: AsyncSession, data, message):
     obj = Events(
         id=max_id + 1,
         event_name=data['event_name'],
+        event_address=data["event_address"],
         event_date=data['event_date'],
         event_time=data['event_time'],
     )
