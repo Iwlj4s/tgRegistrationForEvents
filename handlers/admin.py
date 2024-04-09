@@ -445,18 +445,28 @@ async def add_event_time(message: Message, state: FSMContext):
 
 
 # Adding Event
+# Adding Event
 @admin_router.message(AddEvent.confirm_or_change_event, F.text.lower() == "добавить мероприятие")
-async def add_event_time(message: Message, state: FSMContext, session: AsyncSession):
+async def add_event_time(message: Message, state: FSMContext, session: AsyncSession, bot):
     data = await state.get_data()
-    print(data)
 
     info = get_event_info(data=data)
 
     if AddEvent.event_for_change:
-        await orm_update_event(session=session, event_id=AddEvent.event_for_change.id, data=data)  # Update Events
-        print(data)
+        event_id = AddEvent.event_for_change.id
+
+        # Update Events
+        await orm_update_event(session=session, event_id=event_id, data=data)
+
         # Update usersEvents
-        await orm_update_users_events_by_event_id(session=session, event_id=AddEvent.event_for_change.id, data=data)
+        await orm_update_users_events_by_event_id(session=session, event_id=event_id, data=data)
+
+        # Send notification about changing event
+        for user in await orm_get_users_from_users_events(session=session, event_id=event_id):
+            await bot.send_message(user.user_tg_id,
+                                   f"{user.user_name.title()}, мероприятие {AddEvent.event_for_change.event_name}"
+                                   f" изменено!\n"
+                                   f"{info}")
 
         await message.answer(f"Вы изменили мероприятие - {AddEvent.event_for_change.event_name}\n"
                              f"{info}",
