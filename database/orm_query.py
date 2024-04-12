@@ -121,7 +121,6 @@ async def orm_update_users_events(session: AsyncSession, user_tg_id: int, data: 
 
     query = update(UsersEvents).where(UsersEvents.user_tg_id == user_tg_id).values(
         user_name=data['user_name'],
-        event_address=data["event_address"],
         user_phone=data['user_phone'],
         user_email=data['user_email']
     )

@@ -266,9 +266,13 @@ async def admin_enter_email(message: Message, state: FSMContext):
 # CONFIRM USER INFO
 @admin_router.message(ChangeUserInfo.changing_user_event_registration_change_or_confirm,
                       F.text.lower() == "изменить информацию")
-async def admin_confirm(message: Message, state: FSMContext, session: AsyncSession):
+async def admin_confirm(message: Message, state: FSMContext, session: AsyncSession, bot):
     data = await state.get_data()
     info = get_user_data_for_admin(data=data)
+
+    user_id = ChangeUserInfo.user_for_change.tg_id
+    user_name = ChangeUserInfo.user_for_change.name
+
     print(info)
     print(data)
 
@@ -277,6 +281,10 @@ async def admin_confirm(message: Message, state: FSMContext, session: AsyncSessi
 
     await message.answer("Пользователь изменен: ")
     await message.answer(f"{info}", reply_markup=start_admin_keyboard)
+
+    await bot.send_message(user_id,
+                           f"{user_name.title()}, данные о пользователе изменены!\n"
+                           f"{info}")
 
     await state.clear()
     ChangeUserInfo.user_for_change = None
