@@ -214,6 +214,7 @@ async def user_event_registration(message: Message, state: FSMContext, session: 
     await message.answer("Список мероприятий:")
     for event in await orm_get_events(session=session):
         await message.answer(f"{event.event_name}\n"
+                             f"Адрес мероприятия - {event.event_address}\n"
                              f"User event_id - {event.id}\n"
                              f"Дата мероприятия - {event.event_date}\n"
                              f"Начало мероприятия - {event.event_time}\n",
@@ -265,6 +266,7 @@ async def unsubscribe_from_event(message: Message, session: AsyncSession):
             continue
 
         await message.answer(f"{event.user_event_name}\n"
+                             f"Адрес мероприятия - {event.user_event_address}\n"
                              f"Id мероприятия - {event.user_event_id}\n"
                              f"Дата мероприятия - {event_by_id.event_date}\n"
                              f"Начало мероприятия - {event_by_id.event_time}\n",
