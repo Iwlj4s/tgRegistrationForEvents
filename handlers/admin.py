@@ -282,6 +282,7 @@ async def admin_confirm(message: Message, state: FSMContext, session: AsyncSessi
     await message.answer("Пользователь изменен: ")
     await message.answer(f"{info}", reply_markup=start_admin_keyboard)
 
+    # Send notification about changing user info
     await bot.send_message(user_id,
                            f"{user_name.title()}, данные о пользователе изменены!\n"
                            f"{info}")
