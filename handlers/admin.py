@@ -52,6 +52,7 @@ class ChangeUserInfo(StatesGroup):
 
 class AddEvent(StatesGroup):
     add_event_name = State()
+    add_event_address = State()
     add_event_date = State()
     add_event_time = State()
 
@@ -61,6 +62,7 @@ class AddEvent(StatesGroup):
 
     texts = {
         'AddEvent:add_event_name': 'Измените имя мероприятия',
+        'AddEvent:add_event_address': 'Измените адрес мероприятия',
         'AddEvent:add_event_date': 'Измените дату мероприятия',
         'AddEvent:add_event_time': 'Измените время мероприятия'
     }
@@ -264,9 +266,13 @@ async def admin_enter_email(message: Message, state: FSMContext):
 # CONFIRM USER INFO
 @admin_router.message(ChangeUserInfo.changing_user_event_registration_change_or_confirm,
                       F.text.lower() == "изменить информацию")
-async def admin_confirm(message: Message, state: FSMContext, session: AsyncSession):
+async def admin_confirm(message: Message, state: FSMContext, session: AsyncSession, bot):
     data = await state.get_data()
     info = get_user_data_for_admin(data=data)
+
+    user_id = ChangeUserInfo.user_for_change.tg_id
+    user_name = ChangeUserInfo.user_for_change.name
+
     print(info)
     print(data)
 
@@ -275,6 +281,11 @@ async def admin_confirm(message: Message, state: FSMContext, session: AsyncSessi
 
     await message.answer("Пользователь изменен: ")
     await message.answer(f"{info}", reply_markup=start_admin_keyboard)
+
+    # Send notification about changing user info
+    await bot.send_message(user_id,
+                           f"{user_name.title()}, данные о пользователе изменены!\n"
+                           f"{info}")
 
     await state.clear()
     ChangeUserInfo.user_for_change = None
@@ -287,7 +298,8 @@ async def events_list(message: Message, session: AsyncSession):
     await message.answer("Список мероприятий:")
     for event in await orm_get_events(session=session):
         await message.answer(f"{event.event_name}\n"
-                             f"User event_id - {event.id}\n"
+                             f"Адрес мероприятия - {event.event_address}\n"
+                             f"Id мероприятия - {event.id}\n"
                              f"Дата мероприятия - {event.event_date}\n"
                              f"Начало мероприятия - {event.event_time}\n",
                              reply_markup=get_callback_btns(btns={
@@ -371,9 +383,25 @@ async def add_event_name(message: Message, state: FSMContext):
     else:
         await state.update_data(event_name=message.text.title())
 
-    await message.answer("Введите дату мероприятия (дд-мм-гггг): ")
+    await message.answer("Введите адрес мероприятия: ")
 
     # WAITING EVENT DATE #
+    await state.set_state(AddEvent.add_event_address)
+
+
+# Event Address
+@admin_router.message(AddEvent.add_event_address,
+                      or_f(F.text, F.text == "[Admin-event] Пропустить поле"))
+async def add_event_address(message: Message, state: FSMContext):
+    if message.text == "[Admin-event] Пропустить поле":
+        await state.update_data(event_address=AddEvent.event_for_change.event_address)
+
+    else:
+        await state.update_data(event_address=message.text)
+
+    await message.answer("Введите дату мероприятия (дд-мм-гггг): ")
+
+    # WAITING EVENT ADDRESS #
     await state.set_state(AddEvent.add_event_date)
 
 
@@ -426,16 +454,28 @@ async def add_event_time(message: Message, state: FSMContext):
 
 
 # Adding Event
+# Adding Event
 @admin_router.message(AddEvent.confirm_or_change_event, F.text.lower() == "добавить мероприятие")
-async def add_event_time(message: Message, state: FSMContext, session: AsyncSession):
+async def add_event_time(message: Message, state: FSMContext, session: AsyncSession, bot):
     data = await state.get_data()
 
     info = get_event_info(data=data)
 
     if AddEvent.event_for_change:
-        await orm_update_event(session=session, event_id=AddEvent.event_for_change.id, data=data)  # Update Events
+        event_id = AddEvent.event_for_change.id
+
+        # Update Events
+        await orm_update_event(session=session, event_id=event_id, data=data)
+
         # Update usersEvents
-        await orm_update_users_events_by_event_id(session=session, event_id=AddEvent.event_for_change.id, data=data)
+        await orm_update_users_events_by_event_id(session=session, event_id=event_id, data=data)
+
+        # Send notification about changing event
+        for user in await orm_get_users_from_users_events(session=session, event_id=event_id):
+            await bot.send_message(user.user_tg_id,
+                                   f"{user.user_name.title()}, мероприятие {AddEvent.event_for_change.event_name}"
+                                   f" изменено!\n"
+                                   f"{info}")
 
         await message.answer(f"Вы изменили мероприятие - {AddEvent.event_for_change.event_name}\n"
                              f"{info}",
