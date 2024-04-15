@@ -6,7 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from email_validator import validate_email, EmailNotValidError
 
 from database.orm_query import (orm_get_user_by_tg_id, orm_get_events_id, orm_get_users_events_by_tg_id,
-                                orm_get_user_id_by_event_id)
+                                orm_get_user_id_by_event_id, orm_get_event_by_name, orm_get_event_by_address,
+                                orm_get_event_by_date, orm_get_event_by_time)
 
 
 # Check user input already not in db #
@@ -79,6 +80,16 @@ async def validate_email_input(email_str):
         return None
 
 
+# Check correct Address input
+async def validate_address_input(address_str):
+    address_pattern = r'Офис \d{1,2}, каб\.[1-9]\d{2,}'
+    if re.match(address_pattern, address_str):
+        return True
+
+    else:
+        return False
+
+
 # Check correct Date input
 async def validate_date_input(date_str):
     try:
@@ -95,3 +106,23 @@ async def validate_time_input(time_str):
         return time
     except ValueError:
         return None
+
+
+# Check no same event
+async def no_same_event(session, event_name, event_address, event_date, event_time):
+    name = await orm_get_event_by_name(session=session, event_name=event_name)
+    address = await orm_get_event_by_address(session=session, event_address=event_address)
+    date = await orm_get_event_by_date(session=session, event_date=event_date)
+    time = await orm_get_event_by_time(session=session, event_time=event_time)
+
+    if name or (address and date and time):
+        reason = ""
+        if name:
+            reason += "Такое название мероприятия уже есть"
+        if address and date and time:
+            if reason:
+                reason += ", а также "
+            reason += "по этому адресу на эту дату и на это время уже зарегистрировано мероприятие"
+        return False, reason
+    else:
+        return True, ""
