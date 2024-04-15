@@ -80,6 +80,16 @@ async def validate_email_input(email_str):
         return None
 
 
+# Check correct Address input
+async def validate_address_input(address_str):
+    address_pattern = r'Офис \d{1,2}, каб\.[1-9]\d{2,}'
+    if re.match(address_pattern, address_str):
+        return True
+
+    else:
+        return False
+
+
 # Check correct Date input
 async def validate_date_input(date_str):
     try:

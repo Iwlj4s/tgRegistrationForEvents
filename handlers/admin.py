@@ -11,10 +11,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # My Imports #
-# from app import bot, dp
 
 from checks.check_user_input import user_id_already_in_db, validate_date_input, validate_time_input, \
-    validate_email_input, validate_phone_input, no_same_event
+    validate_email_input, validate_phone_input, no_same_event, validate_address_input
 
 from keyboards.reply import (start_registration_keyboard, start_admin_keyboard,
                              confirm_or_change_user_info_by_admin, confirm_or_change_event_info_by_admin,
@@ -397,7 +396,14 @@ async def add_event_address(message: Message, state: FSMContext):
         await state.update_data(event_address=AddEvent.event_for_change.event_address)
 
     else:
-        await state.update_data(event_address=message.text)
+        event_address = await validate_address_input(message.text)  # Check date format is day-month-year
+
+        if event_address is False:
+            await message.answer("Некорректный формат адреса.\nПожалуйста, введите адрес в формате 'Офис 1, каб.101':")
+
+            return
+
+        await state.update_data(event_address=str(message.text))
 
     await message.answer("Введите дату мероприятия (дд-мм-гггг): ")
 
