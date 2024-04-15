@@ -11,10 +11,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # My Imports #
-# from app import bot, dp
 
 from checks.check_user_input import user_id_already_in_db, validate_date_input, validate_time_input, \
-    validate_email_input, validate_phone_input
+    validate_email_input, validate_phone_input, no_same_event, validate_address_input
 
 from keyboards.reply import (start_registration_keyboard, start_admin_keyboard,
                              confirm_or_change_user_info_by_admin, confirm_or_change_event_info_by_admin,
@@ -397,7 +396,14 @@ async def add_event_address(message: Message, state: FSMContext):
         await state.update_data(event_address=AddEvent.event_for_change.event_address)
 
     else:
-        await state.update_data(event_address=message.text)
+        event_address = await validate_address_input(message.text)  # Check date format is day-month-year
+
+        if event_address is False:
+            await message.answer("Некорректный формат адреса.\nПожалуйста, введите адрес в формате 'Офис 1, каб.101':")
+
+            return
+
+        await state.update_data(event_address=str(message.text))
 
     await message.answer("Введите дату мероприятия (дд-мм-гггг): ")
 
@@ -429,7 +435,7 @@ async def add_event_date(message: Message, state: FSMContext):
 # Event Time
 @admin_router.message(AddEvent.add_event_time,
                       or_f(F.text, F.text == "[Admin-event] Пропустить поле"))
-async def add_event_time(message: Message, state: FSMContext):
+async def add_event_time(message: Message, state: FSMContext, session: AsyncSession):
     if message.text == "[Admin-event] Пропустить поле":
         await state.update_data(event_time=AddEvent.event_for_change.event_time)
 
@@ -442,18 +448,29 @@ async def add_event_time(message: Message, state: FSMContext):
         await state.update_data(event_time=str(event_time))
 
     data = await state.get_data()
+    event_name = data.get("event_name")
+    event_address = data.get("event_address")
+    event_date = data.get("event_date")
+    event_time = data.get("event_time")
     info = get_event_info(data=data)
 
-    await message.answer("Мероприятие: \n"
-                         f"{info}")
+    same_event, reason = await no_same_event(session=session, event_name=event_name, event_address=event_address,
+                                             event_date=event_date, event_time=event_time)
 
-    # WAITING CONFIRM / CHANGE EVENT #
-    await message.answer("Добавить мероприятие?",
-                         reply_markup=confirm_or_change_event_info_by_admin)
-    await state.set_state(AddEvent.confirm_or_change_event)
+    if not same_event:
+        print(reason)
+        await message.answer(reason, reply_markup=cancel_or_back_for_add_event_admin)
+
+    else:
+        await message.answer("Мероприятие: \n"
+                             f"{info}")
+
+        # WAITING CONFIRM / CHANGE EVENT #
+        await message.answer("Добавить мероприятие?",
+                             reply_markup=confirm_or_change_event_info_by_admin)
+        await state.set_state(AddEvent.confirm_or_change_event)
 
 
-# Adding Event
 # Adding Event
 @admin_router.message(AddEvent.confirm_or_change_event, F.text.lower() == "добавить мероприятие")
 async def add_event_time(message: Message, state: FSMContext, session: AsyncSession, bot):
