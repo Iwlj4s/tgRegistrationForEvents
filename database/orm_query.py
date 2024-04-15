@@ -6,7 +6,6 @@ from database.models import Users, Events, UsersEvents, ClosedEvents
 
 # USERS #
 async def orm_user_add_info(session: AsyncSession, data: dict, message):
-
     obj = Users(
         tg_id=message.from_user.id,
         name=data['user_name'],
@@ -21,12 +20,11 @@ async def orm_user_add_info(session: AsyncSession, data: dict, message):
 
 # Update User #
 async def orm_update_user(session: AsyncSession, user_id: int, data, message):
-
     query = update(Users).where(Users.id == user_id).values(
         tg_id=message.from_user.id,
         name=data['user_name'],
         phone=data['user_phone'],
-        email=data['user_email'],)
+        email=data['user_email'], )
 
     await session.execute(query)
     await session.commit()
@@ -270,3 +268,35 @@ async def orm_delete_event_from_users_events(session: AsyncSession, event_id: in
     query = delete(UsersEvents).where(UsersEvents.user_event_id == event_id)
     await session.execute(query)
     await session.commit()
+
+
+# Get Event by Name
+async def orm_get_event_by_name(session: AsyncSession, event_name: str):
+    query = select(Events).filter(Events.event_name == str(event_name))
+    result = await session.execute(query)
+    events = result.scalar()
+    return events
+
+
+# Get Event by address
+async def orm_get_event_by_address(session: AsyncSession, event_address: str):
+    query = select(Events).filter(Events.event_address == str(event_address))
+    result = await session.execute(query)
+    events = result.scalar()
+    return events
+
+
+# Get Event by date
+async def orm_get_event_by_date(session: AsyncSession, event_date: str):
+    query = select(Events).filter(Events.event_date == str(event_date))
+    result = await session.execute(query)
+    events = result.scalar()
+    return events
+
+
+# Get Event by date
+async def orm_get_event_by_time(session: AsyncSession, event_time: str):
+    query = select(Events).filter(Events.event_time == str(event_time))
+    result = await session.execute(query)
+    events = result.scalar()
+    return events
