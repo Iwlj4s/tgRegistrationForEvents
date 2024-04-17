@@ -70,7 +70,7 @@ class Inspectors(Base):
 class Attendance(Base):
     __tablename__ = 'attendance'
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_tg_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.id'), nullable=False)
     user_event_id: Mapped[int] = mapped_column(Integer, ForeignKey('events.id'), nullable=False)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.id'), nullable=False)
-    check_in_time: Mapped[str] = mapped_column(Text, nullable=False)
-    notes: Mapped[str] = mapped_column(Text, nullable=False)
+    user_event_name: Mapped[int] = mapped_column(Text, ForeignKey('events.event_name'), nullable=False)
+    inspector_notes: Mapped[str] = mapped_column(Text, nullable=True)

@@ -7,7 +7,7 @@ from email_validator import validate_email, EmailNotValidError
 
 from database.orm_query import (orm_get_user_by_tg_id, orm_get_events_id, orm_get_users_events_by_tg_id,
                                 orm_get_user_id_by_event_id, orm_get_event_by_name, orm_get_event_by_address,
-                                orm_get_event_by_date, orm_get_event_by_time)
+                                orm_get_event_by_date, orm_get_event_by_time, orm_get_event_by_event_name)
 
 
 # Check user input already not in db #
@@ -126,3 +126,16 @@ async def no_same_event(session, event_name, event_address, event_date, event_ti
         return False, reason
     else:
         return True, ""
+
+
+# Check user in UsersEvents
+async def user_in_users_events_for_inspector(session, user_tg_id, user_event_name):
+    tg_id = await orm_get_users_events_by_tg_id(session=session, tg_id=int(user_tg_id))
+    event_name = await orm_get_event_by_event_name(session=session, event_name=str(user_event_name))
+    if tg_id and event_name:
+        return True
+
+    else:
+        return False
+
+
