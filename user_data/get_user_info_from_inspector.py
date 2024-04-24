@@ -3,6 +3,7 @@ def get_user_info_from_inspector(data):
     user_tg_id = data.get("user_tg_id ")
     user_event_id = data.get("user_event_id")
     user_event_name = data.get("user_event_name")
+    inspector_id = data.get("inspector_id")
     inspector_notes = data.get("inspector_notes")
 
     return (f"{user_name}\n"

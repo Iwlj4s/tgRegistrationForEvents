@@ -21,6 +21,7 @@ load_dotenv()
 from database.engine import create_db, drop_db, session_maker
 from middlewares.db import DataBaseSession
 
+
 # ALLOWED_UPDATES = ['message', 'edited_message', 'callback_query']
 token = os.getenv("TOKEN")
 

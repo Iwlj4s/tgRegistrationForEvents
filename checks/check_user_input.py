@@ -7,7 +7,8 @@ from email_validator import validate_email, EmailNotValidError
 
 from database.orm_query import (orm_get_user_by_tg_id, orm_get_events_id, orm_get_users_events_by_tg_id,
                                 orm_get_user_id_by_event_id, orm_get_event_by_name, orm_get_event_by_address,
-                                orm_get_event_by_date, orm_get_event_by_time, orm_get_event_by_event_name)
+                                orm_get_event_by_date, orm_get_event_by_time, orm_get_event_by_event_name,
+                                orm_get_user_on_event_usr_tg_id, orm_get_user_on_event_usr_event_id)
 
 
 # Check user input already not in db #
@@ -63,6 +64,7 @@ async def user_in_users_events_for_unsubscribe(session, user_tg_id, user_event_i
 async def validate_phone_input(phone_str):
     phone_pattern = r'\+7\(\d{3}\)\d{3}-\d{2}-\d{2}'
     if re.match(phone_pattern, phone_str):
+        print("MATHC PHONE")
         return True
 
     else:
@@ -139,3 +141,13 @@ async def user_in_users_events_for_inspector(session, user_tg_id, user_event_nam
         return False
 
 
+# User already on event
+async def user_already_on_event(session, user_tg_id, user_event_id):
+    tg_id = await orm_get_user_on_event_usr_tg_id(session=session, tg_id=int(user_tg_id))
+    event_id = await orm_get_user_on_event_usr_event_id(session=session, event_id=int(user_event_id))
+
+    if tg_id and event_id:
+        return True
+
+    else:
+        return False

@@ -13,9 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # My Imports #
 
 from database.models import Inspectors
-from database.orm_query import orm_get_user_by_tg_id, orm_get_event_by_event_name, orm_confirm_user
+from database.orm_query import orm_get_user_by_tg_id, orm_get_event_by_event_name, orm_confirm_user, \
+    orm_get_user_on_event_usr_event_id, orm_get_events
 
-from checks.check_user_input import user_id_already_in_db, user_in_users_events, user_in_users_events_for_inspector
+from checks.check_user_input import user_id_already_in_db, user_in_users_events, user_in_users_events_for_inspector, \
+    user_already_on_event
 
 from keyboards.reply import start_inspector_keyboard, after_registration_user_keyboard, start_registration_keyboard, \
     cancel_or_back_for_check_user, confirm_user_by_inspector, cancel_or_back_or_skip_for_check_user
@@ -71,6 +73,18 @@ async def exit_from_inspector(message: Message, session: AsyncSession):
     else:
         await message.answer("Вы вышли из роли проверяющего",
                              reply_markup=start_registration_keyboard)
+
+
+# Events list
+@inspector_router.message(or_f(Command("event"), (F.text.lower() == "мероприятия")))
+async def events_list_inspector(message: Message, session: AsyncSession):
+    await message.answer("Список мероприятий:")
+    for event in await orm_get_events(session=session):
+        await message.answer(f"{event.event_name}\n"
+                             f"Адрес мероприятия - {event.event_address}\n"
+                             f"Id мероприятия - {event.id}\n"
+                             f"Дата мероприятия - {event.event_date}\n"
+                             f"Начало мероприятия - {event.event_time}\n")
 
 
 # CANCEL #
@@ -141,6 +155,9 @@ async def enter_event_name(message: Message, state: FSMContext, session: AsyncSe
     data = await state.get_data()
     user_tg_id = data.get("user_tg_id")
     user_event_name = message.text.title()
+
+    event = await orm_get_event_by_event_name(session=session, event_name=str(user_event_name))
+
     user_in_user_event = await user_in_users_events_for_inspector(session=session, user_tg_id=user_tg_id,
                                                                   user_event_name=user_event_name)
 
@@ -150,19 +167,23 @@ async def enter_event_name(message: Message, state: FSMContext, session: AsyncSe
         return
 
     else:
-        inspector_code = get_code()
-        event = await orm_get_event_by_event_name(session=session, event_name=str(user_event_name))
-        user_event_id = event.user_event_id
-        await state.update_data(user_event_name=message.text.title())
-        await state.update_data(inspector_code=inspector_code)
-        await state.update_data(user_event_id=user_event_id)
+        if await user_already_on_event(session=session, user_tg_id=user_tg_id, user_event_id=event.user_event_id):
+            await message.answer("Хуй")
+            return
 
-        await bot.send_message(user_tg_id, f"Код для подтверждения посещения мероприятия - {inspector_code}\n"
-                                           f"Сообщите его ТОЛЬКО проверяющему на мероприятии")
-        await message.answer("Пользователю отправлен код, введите его для подтверждения личности пользователя: ")
+        else:
+            inspector_code = get_code()
+            user_event_id = event.user_event_id
+            await state.update_data(user_event_name=message.text.title())
+            await state.update_data(inspector_code=inspector_code)
+            await state.update_data(user_event_id=user_event_id)
 
-        # WAIT CODE
-        await state.set_state(UserCheck.check_sent_code)
+            await bot.send_message(user_tg_id, f"Код для подтверждения посещения мероприятия - {inspector_code}\n"
+                                               f"Сообщите его ТОЛЬКО проверяющему на мероприятии")
+            await message.answer("Пользователю отправлен код, введите его для подтверждения личности пользователя: ")
+
+            # WAIT CODE
+            await state.set_state(UserCheck.check_sent_code)
 
 
 # Check sent code
@@ -189,6 +210,8 @@ async def check_sent_code(message: Message, state: FSMContext, session: AsyncSes
 # Inspector add / skip notes
 @inspector_router.message(UserCheck.inspector_add_notes, F.text)
 async def add_notes(message: Message, state: FSMContext, session: AsyncSession):
+    await state.update_data(inspector_id=int(message.from_user.id))
+
     data = await state.get_data()
     user_tg_id = data.get("user_tg_id")
     user_event_name = data.get("user_event_name")
@@ -196,16 +219,18 @@ async def add_notes(message: Message, state: FSMContext, session: AsyncSession):
     if message.text == "[Inspector-check] Пропустить поле":
         inspector_notes = "Заметок нет"
         await state.update_data(inspector_notes=inspector_notes)
+        print(data)
 
     else:
         await state.update_data(inspector_notes=message.text.title())
 
-        await message.answer(f"Вы подтверждаете, что пользователь {user_tg_id} "
-                             f"будет присутствовать на мероприятии {user_event_name}?",
-                             reply_markup=confirm_user_by_inspector)
+    await message.answer(f"Вы подтверждаете, что пользователь {user_tg_id} "
+                         f"будет присутствовать на мероприятии {user_event_name}?",
+                         reply_markup=confirm_user_by_inspector)
+    print(data)
 
-        # WAIT CONFIRM
-        await state.set_state(UserCheck.inspector_confirm_user)
+    # WAIT CONFIRM
+    await state.set_state(UserCheck.inspector_confirm_user)
 
 
 # Confirm user

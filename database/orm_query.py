@@ -314,6 +314,22 @@ async def orm_get_event_by_time(session: AsyncSession, event_time: str):
 
 # INSPECTOR stuff #
 
+# User already on event (user tg id)
+async def orm_get_user_on_event_usr_tg_id(session: AsyncSession, tg_id: int):
+    query = select(Attendance).filter(Attendance.user_tg_id == tg_id)
+    result = await session.execute(query)
+    events = result.scalar()
+    return events
+
+
+# User already on event (event_id)
+async def orm_get_user_on_event_usr_event_id(session: AsyncSession, event_id: int):
+    query = select(Attendance).filter(Attendance.user_event_id == event_id)
+    result = await session.execute(query)
+    events = result.scalar()
+    return events
+
+
 # Confirm user (add user info in attendance)
 async def orm_confirm_user(session: AsyncSession, data):
 
@@ -321,6 +337,7 @@ async def orm_confirm_user(session: AsyncSession, data):
         user_tg_id=data['user_tg_id'],
         user_event_id=data["user_event_id"],
         user_event_name=data["user_event_name"],
+        inspector_id=data["inspector_id"],
         inspector_notes=data['inspector_notes'],
     )
 

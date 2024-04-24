@@ -73,4 +73,5 @@ class Attendance(Base):
     user_tg_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.id'), nullable=False)
     user_event_id: Mapped[int] = mapped_column(Integer, ForeignKey('events.id'), nullable=False)
     user_event_name: Mapped[int] = mapped_column(Text, ForeignKey('events.event_name'), nullable=False)
+    inspector_id: Mapped[int] = mapped_column(Integer, ForeignKey('inspectors.id'), nullable=False)
     inspector_notes: Mapped[str] = mapped_column(Text, nullable=True)
