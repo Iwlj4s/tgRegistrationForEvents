@@ -168,7 +168,8 @@ async def enter_event_name(message: Message, state: FSMContext, session: AsyncSe
 
     else:
         if await user_already_on_event(session=session, user_tg_id=user_tg_id, user_event_id=event.user_event_id):
-            await message.answer("Хуй")
+            await message.answer(f"У данного пользователя {user_tg_id} уже подтверждена запись на это мероприятие "
+                                 f"{user_event_name}")
             return
 
         else:
@@ -180,7 +181,8 @@ async def enter_event_name(message: Message, state: FSMContext, session: AsyncSe
 
             await bot.send_message(user_tg_id, f"Код для подтверждения посещения мероприятия - {inspector_code}\n"
                                                f"Сообщите его ТОЛЬКО проверяющему на мероприятии")
-            await message.answer("Пользователю отправлен код, введите его для подтверждения личности пользователя: ")
+            await message.answer(f"Пользователю отправлен код {inspector_code}\n"
+                                 f"Введите его для подтверждения личности пользователя: ")
 
             # WAIT CODE
             await state.set_state(UserCheck.check_sent_code)
