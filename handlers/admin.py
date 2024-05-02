@@ -209,7 +209,7 @@ async def admin_enter_name(message: Message, state: FSMContext):
     else:
         await state.update_data(user_name=message.text.lower())
 
-    await message.answer("Измените номер телефона пользователя: ")
+    await message.answer("Измените номер телефона пользователя ('+7(XXX)XXX-XX-XX'): ")
     # WAITING USER PHONE #
     await state.set_state(ChangeUserInfo.change_user_event_registration_phone)
 
@@ -293,7 +293,7 @@ async def admin_confirm(message: Message, state: FSMContext, session: AsyncSessi
 # EVENT STUFF #
 # Check Events
 @admin_router.message(or_f(Command("event"), (F.text.lower() == "просмотр мероприятий")))
-async def events_list(message: Message, session: AsyncSession):
+async def events_list_admin(message: Message, session: AsyncSession):
     await message.answer("Список мероприятий:")
     for event in await orm_get_events(session=session):
         await message.answer(f"{event.event_name}\n"
@@ -365,7 +365,7 @@ async def change_event(callback: CallbackQuery, state: FSMContext, session: Asyn
     AddEvent.event_for_change = event_for_change
 
     await callback.answer()
-    await callback.message.answer("Измените название меропрития: ",
+    await callback.message.answer("Измените название мероприятия: ",
                                   reply_markup=cancel_or_back_for_add_event_admin)
 
     # WAITING USER NAME #
@@ -405,7 +405,7 @@ async def add_event_address(message: Message, state: FSMContext):
 
         await state.update_data(event_address=str(message.text))
 
-    await message.answer("Введите дату мероприятия (дд-мм-гггг): ")
+    await message.answer("Введите дату мероприятия (дд-мм-гг гг): ")
 
     # WAITING EVENT ADDRESS #
     await state.set_state(AddEvent.add_event_date)
@@ -421,7 +421,7 @@ async def add_event_date(message: Message, state: FSMContext):
     else:
         event_date = await validate_date_input(message.text)  # Check date format is day-month-year
         if event_date is None:
-            await message.answer("Некорректный формат даты.\nПожалуйста, введите дату в формате 'дд-мм-гггг':")
+            await message.answer("Некорректный формат даты.\nПожалуйста, введите дату в формате 'дд-мм-гг гг':")
             return
 
         await state.update_data(event_date=str(event_date))

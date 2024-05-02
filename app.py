@@ -8,10 +8,11 @@ from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 from aiogram.types import BotCommandScopeDefault
 
-from handlers.admin import admin_router
 
 # My Imports #
 from handlers.user_register import user_registration_router
+from handlers.admin import admin_router
+from handlers.inspector import inspector_router
 
 from bot_commands.bot_commands_list import user_commands
 
@@ -19,6 +20,7 @@ load_dotenv()
 
 from database.engine import create_db, drop_db, session_maker
 from middlewares.db import DataBaseSession
+
 
 # ALLOWED_UPDATES = ['message', 'edited_message', 'callback_query']
 token = os.getenv("TOKEN")
@@ -28,6 +30,7 @@ dp = Dispatcher()
 
 dp.include_router(user_registration_router)
 dp.include_router(admin_router)
+dp.include_router(inspector_router)
 
 
 async def startup(bot):

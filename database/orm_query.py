@@ -1,10 +1,10 @@
 from sqlalchemy import select, update, delete, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import Users, Events, UsersEvents, ClosedEvents
+from database.models import Users, Events, UsersEvents, ClosedEvents, Attendance
 
 
-# USERS #
+# USERS stuff#
 async def orm_user_add_info(session: AsyncSession, data: dict, message):
     obj = Users(
         tg_id=message.from_user.id,
@@ -38,7 +38,7 @@ async def orm_get_user_by_tg_id(session: AsyncSession, tg_id: int):
     return user
 
 
-# EVENTS #
+# EVENTS stuff#
 # Get events
 async def orm_get_events(session: AsyncSession):
     query = select(Events)
@@ -143,6 +143,7 @@ async def orm_update_users_events_by_event_id(session: AsyncSession, event_id: i
     print(f"UsersEvents updated successfully.")
 
 
+# usersEvents by tg_id
 async def orm_get_users_events_by_tg_id(session: AsyncSession, tg_id: int):
     query = select(UsersEvents).filter(UsersEvents.user_tg_id == tg_id)
     result = await session.execute(query)
@@ -150,11 +151,20 @@ async def orm_get_users_events_by_tg_id(session: AsyncSession, tg_id: int):
     return events
 
 
+# usersEvents by event_id
 async def orm_get_user_id_by_event_id(session: AsyncSession, event_id: int):
     query = select(UsersEvents).filter(UsersEvents.user_event_id == event_id)
     result = await session.execute(query)
     tg_id = result.scalar()
     return tg_id
+
+
+# usersEvents by event_name
+async def orm_get_event_by_event_name(session: AsyncSession, event_name: str):
+    query = select(UsersEvents).filter(UsersEvents.user_event_name == event_name)
+    result = await session.execute(query)
+    event = result.scalar()
+    return event
 
 
 # Unsubscribe from event
@@ -300,3 +310,37 @@ async def orm_get_event_by_time(session: AsyncSession, event_time: str):
     result = await session.execute(query)
     events = result.scalar()
     return events
+
+
+# INSPECTOR stuff #
+
+# User already on event (user tg id)
+async def orm_get_user_on_event_usr_tg_id(session: AsyncSession, tg_id: int):
+    query = select(Attendance).filter(Attendance.user_tg_id == tg_id)
+    result = await session.execute(query)
+    events = result.scalar()
+    return events
+
+
+# User already on event (event_id)
+async def orm_get_user_on_event_usr_event_id(session: AsyncSession, event_id: int):
+    query = select(Attendance).filter(Attendance.user_event_id == event_id)
+    result = await session.execute(query)
+    events = result.scalar()
+    return events
+
+
+# Confirm user (add user info in attendance)
+async def orm_confirm_user(session: AsyncSession, data):
+
+    obj = Attendance(
+        user_tg_id=data['user_tg_id'],
+        user_event_id=data["user_event_id"],
+        user_event_name=data["user_event_name"],
+        inspector_id=data["inspector_id"],
+        inspector_notes=data['inspector_notes'],
+    )
+
+    session.add(obj)
+
+    await session.commit()
