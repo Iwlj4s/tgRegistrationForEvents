@@ -181,7 +181,7 @@ async def enter_event_name(message: Message, state: FSMContext, session: AsyncSe
 
             await bot.send_message(user_tg_id, f"Код для подтверждения посещения мероприятия - {inspector_code}\n"
                                                f"Сообщите его ТОЛЬКО проверяющему на мероприятии")
-            await message.answer(f"Пользователю отправлен код {inspector_code}\n"
+            await message.answer(f"Пользователю отправлен код\n"
                                  f"Введите его для подтверждения личности пользователя: ")
 
             # WAIT CODE
