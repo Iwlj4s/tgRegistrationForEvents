@@ -1,10 +1,10 @@
 from sqlalchemy import select, update, delete, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import Users, Events, UsersEvents, ClosedEvents, Attendance
+from database.models import Users, Events, UsersEvents, ClosedEvents, Admins, Attendance
 
 
-# USERS stuff#
+# USERS #
 async def orm_user_add_info(session: AsyncSession, data: dict, message):
     obj = Users(
         tg_id=message.from_user.id,
@@ -38,7 +38,7 @@ async def orm_get_user_by_tg_id(session: AsyncSession, tg_id: int):
     return user
 
 
-# EVENTS stuff#
+# EVENTS #
 # Get events
 async def orm_get_events(session: AsyncSession):
     query = select(Events)
@@ -143,7 +143,6 @@ async def orm_update_users_events_by_event_id(session: AsyncSession, event_id: i
     print(f"UsersEvents updated successfully.")
 
 
-# usersEvents by tg_id
 async def orm_get_users_events_by_tg_id(session: AsyncSession, tg_id: int):
     query = select(UsersEvents).filter(UsersEvents.user_tg_id == tg_id)
     result = await session.execute(query)
@@ -151,7 +150,6 @@ async def orm_get_users_events_by_tg_id(session: AsyncSession, tg_id: int):
     return events
 
 
-# usersEvents by event_id
 async def orm_get_user_id_by_event_id(session: AsyncSession, event_id: int):
     query = select(UsersEvents).filter(UsersEvents.user_event_id == event_id)
     result = await session.execute(query)
@@ -332,13 +330,26 @@ async def orm_get_user_on_event_usr_event_id(session: AsyncSession, event_id: in
 
 # Confirm user (add user info in attendance)
 async def orm_confirm_user(session: AsyncSession, data):
-
     obj = Attendance(
         user_tg_id=data['user_tg_id'],
         user_event_id=data["user_event_id"],
         user_event_name=data["user_event_name"],
         inspector_id=data["inspector_id"],
         inspector_notes=data['inspector_notes'],
+    )
+
+    session.add(obj)
+
+    await session.commit()
+
+
+# ADD ADMIN #
+async def orm_admin_add_info(session: AsyncSession, data: dict, message):
+    obj = Admins(
+        tg_id=data['admin_tg_id'],
+        name=data['admin_name'],
+        phone=data['admin_phone'],
+        email=data['admin_email'],
     )
 
     session.add(obj)

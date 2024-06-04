@@ -151,3 +151,12 @@ async def user_already_on_event(session, user_tg_id, user_event_id):
 
     else:
         return False
+
+
+# Check admin input digits for admin's tg id
+async def validate_tg_id_input(tg_id):
+    if tg_id.isdigit():
+        return True
+
+    else:
+        return False
