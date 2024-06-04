@@ -20,10 +20,11 @@ from keyboards.reply import (start_registration_keyboard, start_admin_keyboard,
                              cancel_or_back_for_user_change_admin,
                              cancel_or_back_for_add_event_admin, after_registration_user_keyboard,
                              cancel_or_back_for_admin_admin, confirm_or_change_admin_info_by_admin,
-                             cancel_or_back_for_admin_change_admin)
+                             cancel_or_back_for_admin_change_admin, cancel_or_back_for_admin_change_inspector,
+                             cancel_or_back_for_admin_inspector, confirm_or_change_inspector_info_by_admin)
 from keyboards.inline import get_callback_btns
 
-from user_data.get_user_info import get_user_info, get_user_data_for_admin, get_admin_info
+from user_data.get_user_info import get_user_info, get_user_data_for_admin, get_admin_info, get_inspector_info
 from user_data.get_event_info import get_event_info
 
 from database.models import Admins
@@ -31,7 +32,8 @@ from database.orm_query import orm_get_users, orm_delete_user, orm_get_events, o
     orm_delete_user_from_events, orm_update_users_events, orm_add_event, orm_delete_event, \
     orm_delete_event_from_users_events, orm_get_events_id, orm_update_users_events_by_event_id, orm_update_event, \
     orm_add_info_in_closed_events, orm_get_user_by_tg_id, orm_get_users_from_users_events, orm_admin_add_info, \
-    orm_get_admins, orm_delete_admin, orm_get_admin, orm_update_admin
+    orm_get_admins, orm_delete_admin, orm_get_admin, orm_update_admin, orm_get_attendance, orm_get_inspectors, \
+    orm_delete_inspector, orm_get_inspector, orm_update_inspector, orm_inspector_add_info
 
 admin_router = Router()
 
@@ -85,6 +87,24 @@ class AddAdmin(StatesGroup):
         'AddAdmin:add_admin_name': 'Измените имя администратора',
         'AddAdmin:add_admin_phone': 'Измените телефон администратора',
         'AddAdmin:add_admin_email': 'Измените эл.почту администратора'
+    }
+
+
+class AddInspector(StatesGroup):
+    add_inspector_tg_id = State()
+    add_inspector_name = State()
+    add_inspector_phone = State()
+    add_inspector_email = State()
+
+    confirm_or_change_inspector = State()
+
+    inspector_for_change = None
+
+    texts = {
+        'AddInspector:add_inspector_tg_id': 'Измените телеграм id проверяющего',
+        'AddInspector:add_inspector_name': 'Измените имя проверяющего',
+        'AddInspector:add_inspector_phone': 'Измените телефон проверяющего',
+        'AddInspector:add_inspector_email': 'Измените эл.почту проверяющего'
     }
 
 
@@ -239,6 +259,25 @@ async def admin_back_admin_info_handler(message: Message, state: FSMContext):
         previous_state = step
 
 
+# BACK FOR INSPECTOR #
+@admin_router.message(StateFilter('*'), F.text.lower() == "[admin-inspector] изменить предыдущее поле")
+async def admin_back_inspector_info_handler(message: Message, state: FSMContext):
+    current_state = await state.get_state()
+
+    if current_state == AddInspector.add_inspector_tg_id:
+        await message.answer("Вы находитесь на первом шаге изменения информации проверяющего. \n"
+                             "Введите телеграм id проверяющего или нажмите 'отмена'")
+        return
+
+    previous_state = None
+    for step in AddInspector.__all_states__:
+        if step.state == current_state:
+            await state.set_state(previous_state.state)
+            await message.answer(f"Вы вернулись к предыдущему шагу:\n{AddInspector.texts[previous_state.state]}")
+            return
+        previous_state = step
+
+
 # GET USER NAME
 @admin_router.message(ChangeUserInfo.change_user_event_registration_name,
                       or_f(F.text, F.text == "[Admin-user] Пропустить поле"))
@@ -324,7 +363,8 @@ async def admin_confirm(message: Message, state: FSMContext, session: AsyncSessi
     # Send notification about changing user info
     await bot.send_message(user_id,
                            f"{user_name.title()}, данные о пользователе изменены!\n"
-                           f"{info}")
+                           f"{info}",
+                           reply_markup=start_admin_keyboard)
 
     await state.clear()
     ChangeUserInfo.user_for_change = None
@@ -713,5 +753,188 @@ async def add_admin_confirm(message: Message, state: FSMContext, session: AsyncS
 
         await message.answer("Добавлен администратор: ")
         await message.answer(f"{info}",
-                             reply_markup=after_registration_user_keyboard)
+                             reply_markup=start_admin_keyboard)
     await state.clear()
+    AddAdmin.admin_for_change = None
+
+
+# ATTENDANCE
+# Check Attendance
+@admin_router.message(F.text.lower() == "просмотр посещений мероприятий")
+async def attendance_list_admin(message: Message, session: AsyncSession):
+    await message.answer("Список посещений:")
+    for attendance in await orm_get_attendance(session=session):
+        await message.answer(f"Телеграм id пользователя - {attendance.user_tg_id}\n"
+                             f"Id мероприятия - {attendance.user_event_id}\n"
+                             f"Название мероприятия - {attendance.user_event_name}\n"
+                             f"Id проверяющего - {attendance.inspector_id}\n"
+                             f"Заметки проверяющего - {attendance.inspector_notes}\n")
+
+
+# INSPECTOR
+# Check inspectors
+@admin_router.message(F.text.lower() == "просмотр проверяющих")
+async def get_inspectors(message: Message, session: AsyncSession):
+    await message.answer("Вот список проверяющих: ")
+    for inspector in await orm_get_inspectors(session=session):
+        await message.answer(f"tg_id - {inspector.tg_id}\n"
+                             f"Inspector Name - {inspector.name}\n"
+                             f"Inspector Phone - {inspector.phone}\n"
+                             f"Inspector Email - {inspector.email}\n",
+                             reply_markup=get_callback_btns(btns={
+                                 'Изменить': f'change_inspector_{inspector.id}',
+                                 'Удалить': f'delete_inspector_{inspector.tg_id}'
+                             })
+                             )
+
+
+# Delete Admin
+@admin_router.callback_query(F.data.startswith('delete_inspector_'))
+async def delete_inspector(callback: CallbackQuery, session: AsyncSession):
+    print("Delete function start !")
+    inspector_id = callback.data.split("_")[-1]
+    await orm_delete_inspector(session=session, inspector_id=int(inspector_id))
+
+    await callback.answer("Проверяющий удален")
+    await callback.message.answer("Проверяющий удален!")
+
+
+# Change inspector
+@admin_router.callback_query(StateFilter(None), F.data.startswith('change_inspector_'))
+async def change_inspector(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
+    inspector_id = callback.data.split("_")[-1]
+    inspector_for_change = await orm_get_inspector(session=session, inspector_id=int(inspector_id))
+
+    AddInspector.inspector_for_change = inspector_for_change
+
+    await callback.answer()
+    await callback.message.answer("Измените телеграм id проверяющего: ",
+                                  reply_markup=cancel_or_back_for_admin_change_inspector)
+
+    # WAITING USER NAME #
+    await state.set_state(AddInspector.add_inspector_tg_id)
+
+
+# Add inspector
+@admin_router.message(StateFilter(None), F.text.lower() == "добавить проверяющего")
+async def add_inspector(message: Message, state: FSMContext):
+    await message.answer("Введите телеграм id проверяющего: ",
+                         reply_markup=cancel_or_back_for_admin_inspector)
+
+    # WAIT TG ID #
+    await state.set_state(AddInspector.add_inspector_tg_id)
+
+
+# Inspector tg id
+@admin_router.message(AddInspector.add_inspector_tg_id, or_f(F.text,
+                                                             F.text == "[Admin-inspector] Пропустить поле"))
+async def add_inspector_tg_id(message: Message, state: FSMContext):
+    if message.text == "[Admin-inspector] Пропустить поле":
+        await state.update_data(tg_id=AddInspector.inspector_for_change.tg_id)
+
+    else:
+        if not await validate_tg_id_input(tg_id=message.text):
+            await message.answer(
+                "Некорректный формат телеграм id.\nПожалуйста, введите телеграм id используя цифры.")
+            return
+
+        await state.update_data(tg_id=message.text)
+
+    await message.answer("Введите имя проверяющего: ")
+
+    # WAITING INSPECTOR NAME #
+    await state.set_state(AddInspector.add_inspector_name)
+
+
+# Inspector name
+@admin_router.message(AddInspector.add_inspector_name, or_f(F.text,
+                                                            F.text == "[Admin-inspector_] Пропустить поле"))
+async def add_inspector__name(message: Message, state: FSMContext):
+    if message.text == "[Admin-inspector_] Пропустить поле":
+        await state.update_data(inspector_name=AddInspector.inspector_for_change.name)
+
+    else:
+        await state.update_data(inspector_name=message.text.title())
+
+    await message.answer("Введите телефон проверяющего: ")
+
+    # WAITING ADMIN PHONE#
+    await state.set_state(AddInspector.add_inspector_phone)
+
+
+# Inspector phone
+@admin_router.message(AddInspector.add_inspector_phone, or_f(F.text,
+                                                             F.text == "[Admin-inspector] Пропустить поле"))
+async def add_inspector_phone(message: Message, state: FSMContext):
+    if message.text == "[Admin-inspector] Пропустить поле":
+        await state.update_data(inspector_phone=AddInspector.inspector_for_change.phone)
+
+    else:
+        if not await validate_phone_input(message.text):
+            await message.answer(
+                "Некорректный формат номера телефона.\nПожалуйста, введите номер в формате +7(XXX)XXX-XX-XX.")
+            return
+
+        await state.update_data(inspector_phone=message.text)
+
+    await message.answer("Введите эл.почту проверяющего: ")
+
+    # WAITING INSPECTOR EMAIL#
+    await state.set_state(AddInspector.add_inspector_email)
+
+
+# Inspector email
+@admin_router.message(AddInspector.add_inspector_email, or_f(F.text,
+                                                             F.text == "[Admin-inspector] Пропустить поле"))
+async def add_inspector_email(message: Message, state: FSMContext):
+    if message.text == "[Admin-inspector] Пропустить поле":
+        await state.update_data(inspector_email=AddInspector.inspector_for_change.email)
+
+    else:
+        inspector_email = await validate_email_input(message.text)
+        if inspector_email is None:
+            await message.answer("Некорректный формат почты.\nПожалуйста, введите почту в формате 'abcd123@gmail.com':")
+            return
+
+        await state.update_data(inspector_email=message.text)
+
+    data = await state.get_data()
+
+    info = get_inspector_info(data=data)
+    print(data)
+    print(info)
+    await message.answer("Данные проверяющего: ")
+    await message.answer(f"{info}")
+
+    # WAITING CONFIRM / CHANGE INFO #
+    await message.answer("Добавить проверяющего?",
+                         reply_markup=confirm_or_change_inspector_info_by_admin)
+    await state.set_state(AddInspector.confirm_or_change_inspector)
+
+
+# Inspector adding
+@admin_router.message(AddInspector.confirm_or_change_inspector,
+                      F.text.lower() == "добавить проверяющего")
+async def add_inspector_confirm(message: Message, state: FSMContext, session: AsyncSession):
+    data = await state.get_data()
+    info = get_inspector_info(data=data)
+
+    if AddInspector.inspector_for_change:
+        inspector_id = AddInspector.inspector_for_change.id
+
+        # Update Events
+        await orm_update_inspector(session=session, inspector_id=inspector_id, data=data)
+
+        await message.answer(f"Вы изменили проверяющего - {AddInspector.inspector_for_change.name}\n"
+                             f"{info}",
+                             reply_markup=start_admin_keyboard)
+
+    else:
+        await orm_inspector_add_info(session=session, data=data)
+
+        await message.answer("Добавлен проверяющий: ")
+        await message.answer(f"{info}",
+                             reply_markup=start_admin_keyboard)
+
+    await state.clear()
+    AddInspector.inspector_for_change = None
