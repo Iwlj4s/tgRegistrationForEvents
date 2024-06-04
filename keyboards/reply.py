@@ -147,6 +147,7 @@ start_inspector_keyboard = ReplyKeyboardMarkup(
         [KeyboardButton(text="Начать проверку пользователя")],
 
         [KeyboardButton(text="мероприятия")],
+        [KeyboardButton(text="Прове")],
 
         [KeyboardButton(text="Выйти из проверяющего")]
     ],
@@ -188,6 +189,7 @@ confirm_user_by_inspector = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True
 )
+
 
 # KeyboardBuilder #
 def get_keyboard(
