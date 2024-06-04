@@ -18,20 +18,3 @@ class DataBaseSession(BaseMiddleware):
         async with self.session_pool() as session:
             data['session'] = session
             return await handler(event, data)
-
-
-# class CounterMiddleware(BaseMiddleware):
-#     def __init__(self) -> None:
-#         # __init__ works out one time when bot starting #
-#         self.counter = 0
-#
-#     async def __call__(
-#         self,
-#         handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
-#         event: TelegramObject,
-#         data: Dict[str, Any]
-#     ) -> Any:
-#         self.counter += 1
-#         data['counter'] = self.counter
-#         # VERY IMPORTANT RETURN HANDLER #
-#         return await handler(event, data)

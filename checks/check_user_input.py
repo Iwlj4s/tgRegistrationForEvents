@@ -95,3 +95,12 @@ async def validate_time_input(time_str):
         return time
     except ValueError:
         return None
+
+
+# Check admin input digits for admin's tg id
+async def validate_tg_id_input(tg_id):
+    if tg_id.isdigit():
+        return True
+
+    else:
+        return False
