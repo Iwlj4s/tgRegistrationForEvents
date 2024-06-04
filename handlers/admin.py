@@ -13,13 +13,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # My Imports #
 # from app import bot, dp
 from checks.check_user_input import user_id_already_in_db, validate_date_input, validate_time_input, \
-    validate_email_input, validate_phone_input, validate_tg_id_input, no_same_event
+    validate_email_input, validate_phone_input, validate_tg_id_input, no_same_event, validate_address_input
 
 from keyboards.reply import (start_registration_keyboard, start_admin_keyboard,
                              confirm_or_change_user_info_by_admin, confirm_or_change_event_info_by_admin,
                              cancel_or_back_for_user_change_admin,
                              cancel_or_back_for_add_event_admin, after_registration_user_keyboard,
-                             cancel_or_back_for_admin_admin, confirm_or_change_admin_info_by_admin)
+                             cancel_or_back_for_admin_admin, confirm_or_change_admin_info_by_admin,
+                             cancel_or_back_for_admin_change_admin)
 from keyboards.inline import get_callback_btns
 
 from user_data.get_user_info import get_user_info, get_user_data_for_admin, get_admin_info
@@ -29,7 +30,8 @@ from database.models import Admins
 from database.orm_query import orm_get_users, orm_delete_user, orm_get_events, orm_get_user, orm_update_user, \
     orm_delete_user_from_events, orm_update_users_events, orm_add_event, orm_delete_event, \
     orm_delete_event_from_users_events, orm_get_events_id, orm_update_users_events_by_event_id, orm_update_event, \
-    orm_add_info_in_closed_events, orm_get_user_by_tg_id, orm_get_users_from_users_events, orm_admin_add_info
+    orm_add_info_in_closed_events, orm_get_user_by_tg_id, orm_get_users_from_users_events, orm_admin_add_info, \
+    orm_get_admins, orm_delete_admin, orm_get_admin, orm_update_admin
 
 admin_router = Router()
 
@@ -75,6 +77,8 @@ class AddAdmin(StatesGroup):
     add_admin_email = State()
 
     confirm_or_change_admin = State()
+
+    admin_for_change = None
 
     texts = {
         'AddAdmin:add_admin_tg_id': 'Измените телеграм id администратора',
@@ -401,7 +405,7 @@ async def change_event(callback: CallbackQuery, state: FSMContext, session: Asyn
     AddEvent.event_for_change = event_for_change
 
     await callback.answer()
-    await callback.message.answer("Измените название меропрития: ",
+    await callback.message.answer("Измените название мероприятия: ",
                                   reply_markup=cancel_or_back_for_add_event_admin)
 
     # WAITING USER NAME #
@@ -432,7 +436,14 @@ async def add_event_address(message: Message, state: FSMContext):
         await state.update_data(event_address=AddEvent.event_for_change.event_address)
 
     else:
-        await state.update_data(event_address=message.text)
+        event_address = await validate_address_input(message.text)
+
+        if event_address is False:
+            await message.answer("Некорректный формат адреса.\nПожалуйста, введите адрес в формате 'Офис 1, каб.101':")
+
+            return
+
+        await state.update_data(event_address=str(message.text))
 
     await message.answer("Введите дату мероприятия (дд-мм-гггг): ")
 
@@ -540,6 +551,49 @@ async def add_event_time(message: Message, state: FSMContext, session: AsyncSess
 
 
 # ADD ADMIN #
+# Check Admins
+@admin_router.message(F.text.lower() == "просмотр администраторов")
+async def get_admins(message: Message, session: AsyncSession):
+    await message.answer("Вот список администраторов: ")
+    for admin in await orm_get_admins(session=session):
+        await message.answer(f"tg_id - {admin.tg_id}\n"
+                             f"Admin Name - {admin.name}\n"
+                             f"Admin Phone - {admin.phone}\n"
+                             f"Admin Email - {admin.email}\n",
+                             reply_markup=get_callback_btns(btns={
+                                 'Изменить': f'change_admin_{admin.id}',
+                                 'Удалить': f'delete_admin_{admin.tg_id}'
+                             })
+                             )
+
+
+# Delete Admin
+@admin_router.callback_query(F.data.startswith('delete_admin_'))
+async def delete_admin(callback: CallbackQuery, session: AsyncSession):
+    print("Delete function start !")
+    admin_id = callback.data.split("_")[-1]
+    await orm_delete_admin(session=session, admin_id=int(admin_id))
+
+    await callback.answer("Администратор удален")
+    await callback.message.answer("Администратор удален!")
+
+
+# Change admin
+@admin_router.callback_query(StateFilter(None), F.data.startswith('change_admin_'))
+async def change_admin(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
+    admin_id = callback.data.split("_")[-1]
+    admin_for_change = await orm_get_admin(session=session, admin_id=int(admin_id))
+
+    AddAdmin.admin_for_change = admin_for_change
+
+    await callback.answer()
+    await callback.message.answer("Измените телеграм id администратора: ",
+                                  reply_markup=cancel_or_back_for_admin_change_admin)
+
+    # WAITING USER NAME #
+    await state.set_state(AddAdmin.add_admin_tg_id)
+
+
 # Add Admin
 @admin_router.message(StateFilter(None), F.text.lower() == "добавить администратора")
 async def add_admin(message: Message, state: FSMContext):
@@ -551,14 +605,19 @@ async def add_admin(message: Message, state: FSMContext):
 
 
 # Admin tg id
-@admin_router.message(AddAdmin.add_admin_tg_id, F.text)
+@admin_router.message(AddAdmin.add_admin_tg_id, or_f(F.text,
+                                                     F.text == "[Admin-admin] Пропустить поле"))
 async def add_admin_tg_id(message: Message, state: FSMContext):
-    if not await validate_tg_id_input(tg_id=message.text):
-        await message.answer(
-            "Некорректный формат телеграм id.\nПожалуйста, введите телеграм id используя цифры.")
-        return
+    if message.text == "[Admin-admin] Пропустить поле":
+        await state.update_data(tg_id=AddAdmin.admin_for_change.tg_id)
 
-    await state.update_data(admin_tg_id=message.text)
+    else:
+        if not await validate_tg_id_input(tg_id=message.text):
+            await message.answer(
+                "Некорректный формат телеграм id.\nПожалуйста, введите телеграм id используя цифры.")
+            return
+
+        await state.update_data(admin_tg_id=message.text)
 
     await message.answer("Введите имя администратора: ")
 
@@ -567,9 +626,14 @@ async def add_admin_tg_id(message: Message, state: FSMContext):
 
 
 # Admin name
-@admin_router.message(AddAdmin.add_admin_name, F.text)
+@admin_router.message(AddAdmin.add_admin_name, or_f(F.text,
+                                                    F.text == "[Admin-admin] Пропустить поле"))
 async def add_admin_name(message: Message, state: FSMContext):
-    await state.update_data(admin_name=message.text.title())
+    if message.text == "[Admin-admin] Пропустить поле":
+        await state.update_data(admin_name=AddAdmin.admin_for_change.name)
+
+    else:
+        await state.update_data(admin_name=message.text.title())
 
     await message.answer("Введите телефон администратора: ")
 
@@ -578,14 +642,19 @@ async def add_admin_name(message: Message, state: FSMContext):
 
 
 # Admin phone
-@admin_router.message(AddAdmin.add_admin_phone, F.text)
+@admin_router.message(AddAdmin.add_admin_phone, or_f(F.text,
+                                                     F.text == "[Admin-admin] Пропустить поле"))
 async def add_admin_phone(message: Message, state: FSMContext):
-    if not await validate_phone_input(message.text):
-        await message.answer(
-            "Некорректный формат номера телефона.\nПожалуйста, введите номер в формате +7(XXX)XXX-XX-XX.")
-        return
+    if message.text == "[Admin-admin] Пропустить поле":
+        await state.update_data(admin_phone=AddAdmin.admin_for_change.phone)
 
-    await state.update_data(admin_phone=message.text)
+    else:
+        if not await validate_phone_input(message.text):
+            await message.answer(
+                "Некорректный формат номера телефона.\nПожалуйста, введите номер в формате +7(XXX)XXX-XX-XX.")
+            return
+
+        await state.update_data(admin_phone=message.text)
 
     await message.answer("Введите эл.почту администратора: ")
 
@@ -594,21 +663,26 @@ async def add_admin_phone(message: Message, state: FSMContext):
 
 
 # Admin email
-@admin_router.message(AddAdmin.add_admin_email, F.text)
+@admin_router.message(AddAdmin.add_admin_email, or_f(F.text,
+                                                     F.text == "[Admin-admin] Пропустить поле"))
 async def add_admin_email(message: Message, state: FSMContext):
-    admin_email = await validate_email_input(message.text)
-    if admin_email is None:
-        await message.answer("Некорректный формат почты.\nПожалуйста, введите почту в формате 'abcd123@gmail.com':")
-        return
+    if message.text == "[Admin-admin] Пропустить поле":
+        await state.update_data(admin_email=AddAdmin.admin_for_change.email)
 
-    await state.update_data(admin_email=message.text)
+    else:
+        admin_email = await validate_email_input(message.text)
+        if admin_email is None:
+            await message.answer("Некорректный формат почты.\nПожалуйста, введите почту в формате 'abcd123@gmail.com':")
+            return
+
+        await state.update_data(admin_email=message.text)
 
     data = await state.get_data()
 
     info = get_admin_info(data=data)
     print(data)
     print(info)
-    await message.answer("Данные для регистрации: ")
+    await message.answer("Данные администратора: ")
     await message.answer(f"{info}")
 
     # WAITING CONFIRM / CHANGE INFO #
@@ -624,9 +698,20 @@ async def add_admin_confirm(message: Message, state: FSMContext, session: AsyncS
     data = await state.get_data()
     info = get_admin_info(data=data)
 
-    await orm_admin_add_info(session=session, data=data, message=message)
+    if AddAdmin.admin_for_change:
+        admin_id = AddAdmin.admin_for_change.id
 
-    await message.answer("Добавлен администратор: ")
-    await message.answer(f"{info}",
-                         reply_markup=after_registration_user_keyboard)
+        # Update Events
+        await orm_update_admin(session=session, admin_id=admin_id, data=data)
+
+        await message.answer(f"Вы изменили администратора - {AddAdmin.admin_for_change.name}\n"
+                             f"{info}",
+                             reply_markup=start_admin_keyboard)
+
+    else:
+        await orm_admin_add_info(session=session, data=data)
+
+        await message.answer("Добавлен администратор: ")
+        await message.answer(f"{info}",
+                             reply_markup=after_registration_user_keyboard)
     await state.clear()

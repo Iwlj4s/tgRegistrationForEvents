@@ -19,7 +19,7 @@ def get_user_data_for_admin(data):
 
 
 def get_admin_info(data):
-    admin_tg_id = data.get("admin_tg_id")
+    admin_tg_id = data.get("tg_id")
     admin_name = data.get("admin_name")
     admin_phone = data.get("admin_phone")
     admin_email = data.get("admin_email")
