@@ -139,6 +139,55 @@ confirm_or_change_admin_info_by_admin = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+# INSPECTOR #
+
+# Start inspector keyboard
+start_inspector_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Начать проверку пользователя")],
+
+        [KeyboardButton(text="мероприятия")],
+
+        [KeyboardButton(text="Выйти из проверяющего")]
+    ],
+    resize_keyboard=True
+)
+
+# Cancel or Back for inspector checking user
+cancel_or_back_for_check_user = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="[Inspector-check] Изменить предыдущее поле")],
+
+        [KeyboardButton(text="[Inspector-check] Отмена")]
+    ],
+    resize_keyboard=True
+)
+
+
+# Cancel or Back or Skip for inspector checking user
+cancel_or_back_or_skip_for_check_user = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="[Inspector-check] Изменить предыдущее поле")],
+
+        [KeyboardButton(text="[Inspector-check] Пропустить поле")],
+
+        [KeyboardButton(text="[Inspector-check] Отмена")]
+    ],
+    resize_keyboard=True
+)
+
+
+# Confirm inspector
+confirm_user_by_inspector = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Подтвердить присутствие пользователя")],
+
+        [KeyboardButton(text="[Inspector-check] Изменить предыдущее поле")],
+
+        [KeyboardButton(text="[Inspector-check] Отмена")]
+    ],
+    resize_keyboard=True
+)
 
 # KeyboardBuilder #
 def get_keyboard(

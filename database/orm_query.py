@@ -1,12 +1,11 @@
 from sqlalchemy import select, update, delete, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import Users, Events, UsersEvents, ClosedEvents
+from database.models import Users, Events, UsersEvents, ClosedEvents, Admins, Attendance
 
 
 # USERS #
 async def orm_user_add_info(session: AsyncSession, data: dict, message):
-
     obj = Users(
         tg_id=message.from_user.id,
         name=data['user_name'],
@@ -21,12 +20,11 @@ async def orm_user_add_info(session: AsyncSession, data: dict, message):
 
 # Update User #
 async def orm_update_user(session: AsyncSession, user_id: int, data, message):
-
     query = update(Users).where(Users.id == user_id).values(
         tg_id=message.from_user.id,
         name=data['user_name'],
         phone=data['user_phone'],
-        email=data['user_email'],)
+        email=data['user_email'], )
 
     await session.execute(query)
     await session.commit()
@@ -159,6 +157,14 @@ async def orm_get_user_id_by_event_id(session: AsyncSession, event_id: int):
     return tg_id
 
 
+# usersEvents by event_name
+async def orm_get_event_by_event_name(session: AsyncSession, event_name: str):
+    query = select(UsersEvents).filter(UsersEvents.user_event_name == event_name)
+    result = await session.execute(query)
+    event = result.scalar()
+    return event
+
+
 # Unsubscribe from event
 async def orm_unsubscribe_from_event(session: AsyncSession, event_id: int, user_id: int):
     query = delete(UsersEvents).where(and_(UsersEvents.user_event_id == event_id, UsersEvents.user_tg_id == user_id))
@@ -269,4 +275,83 @@ async def orm_delete_event(session: AsyncSession, event_id: int):
 async def orm_delete_event_from_users_events(session: AsyncSession, event_id: int):
     query = delete(UsersEvents).where(UsersEvents.user_event_id == event_id)
     await session.execute(query)
+    await session.commit()
+
+
+# Get Event by Name
+async def orm_get_event_by_name(session: AsyncSession, event_name: str):
+    query = select(Events).filter(Events.event_name == str(event_name))
+    result = await session.execute(query)
+    events = result.scalar()
+    return events
+
+
+# Get Event by address
+async def orm_get_event_by_address(session: AsyncSession, event_address: str):
+    query = select(Events).filter(Events.event_address == str(event_address))
+    result = await session.execute(query)
+    events = result.scalar()
+    return events
+
+
+# Get Event by date
+async def orm_get_event_by_date(session: AsyncSession, event_date: str):
+    query = select(Events).filter(Events.event_date == str(event_date))
+    result = await session.execute(query)
+    events = result.scalar()
+    return events
+
+
+# Get Event by date
+async def orm_get_event_by_time(session: AsyncSession, event_time: str):
+    query = select(Events).filter(Events.event_time == str(event_time))
+    result = await session.execute(query)
+    events = result.scalar()
+    return events
+
+
+# INSPECTOR stuff #
+
+# User already on event (user tg id)
+async def orm_get_user_on_event_usr_tg_id(session: AsyncSession, tg_id: int):
+    query = select(Attendance).filter(Attendance.user_tg_id == tg_id)
+    result = await session.execute(query)
+    events = result.scalar()
+    return events
+
+
+# User already on event (event_id)
+async def orm_get_user_on_event_usr_event_id(session: AsyncSession, event_id: int):
+    query = select(Attendance).filter(Attendance.user_event_id == event_id)
+    result = await session.execute(query)
+    events = result.scalar()
+    return events
+
+
+# Confirm user (add user info in attendance)
+async def orm_confirm_user(session: AsyncSession, data):
+    obj = Attendance(
+        user_tg_id=data['user_tg_id'],
+        user_event_id=data["user_event_id"],
+        user_event_name=data["user_event_name"],
+        inspector_id=data["inspector_id"],
+        inspector_notes=data['inspector_notes'],
+    )
+
+    session.add(obj)
+
+    await session.commit()
+
+
+# ADD ADMIN #
+async def orm_admin_add_info(session: AsyncSession, data: dict, message):
+    obj = Admins(
+        tg_id=data['admin_tg_id'],
+        name=data['admin_name'],
+        phone=data['admin_phone'],
+        email=data['admin_email'],
+    )
+
+    session.add(obj)
+
     await session.commit()
