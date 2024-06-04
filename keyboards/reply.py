@@ -206,7 +206,9 @@ start_inspector_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Начать проверку пользователя")],
 
-        [KeyboardButton(text="мероприятия")],
+        [KeyboardButton(text="Просмотр посещений мероприятий")],
+
+        [KeyboardButton(text="Мероприятия")],
 
         [KeyboardButton(text="Выйти из проверяющего")]
     ],

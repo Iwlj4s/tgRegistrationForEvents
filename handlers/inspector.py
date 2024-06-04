@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.models import Inspectors
 from database.orm_query import orm_get_user_by_tg_id, orm_get_event_by_event_name, orm_confirm_user, \
-    orm_get_user_on_event_usr_event_id, orm_get_events
+    orm_get_user_on_event_usr_event_id, orm_get_events, orm_get_attendance
 
 from checks.check_user_input import user_id_already_in_db, user_in_users_events, user_in_users_events_for_inspector, \
     user_already_on_event
@@ -85,6 +85,18 @@ async def events_list_inspector(message: Message, session: AsyncSession):
                              f"Id мероприятия - {event.id}\n"
                              f"Дата мероприятия - {event.event_date}\n"
                              f"Начало мероприятия - {event.event_time}\n")
+
+
+# Check Attendance
+@inspector_router.message(F.text.lower() == "просмотр посещений мероприятий")
+async def attendance_list_inspector(message: Message, session: AsyncSession):
+    await message.answer("Список посещений:")
+    for attendance in await orm_get_attendance(session=session):
+        await message.answer(f"Телеграм id пользователя - {attendance.user_tg_id}\n"
+                             f"Id мероприятия - {attendance.user_event_id}\n"
+                             f"Название мероприятия - {attendance.user_event_name}\n"
+                             f"Id проверяющего - {attendance.inspector_id}\n"
+                             f"Заметки проверяющего - {attendance.inspector_notes}\n")
 
 
 # CANCEL #
