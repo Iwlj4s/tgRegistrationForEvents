@@ -45,14 +45,25 @@ after_registration_user_keyboard = ReplyKeyboardMarkup(
 # Start admin keyboard
 start_admin_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Просмотр пользователей")],
+        [
+            KeyboardButton(text="Просмотр пользователей"),
+            KeyboardButton(text="Просмотр посещений мероприятий"),
+         ],
 
         [
             KeyboardButton(text="Просмотр мероприятий"),
             KeyboardButton(text="Добавить мероприятие")
         ],
 
-        [KeyboardButton(text="Добавить администратора")],
+        [
+            KeyboardButton(text="Просмотр администраторов"),
+            KeyboardButton(text="Добавить администратора")
+        ],
+
+        [
+            KeyboardButton(text="Просмотр проверяющих"),
+            KeyboardButton(text="Добавить проверяющего"),
+        ],
 
         [KeyboardButton(text="Выйти из администратора")]
     ],
@@ -110,7 +121,7 @@ confirm_or_change_event_info_by_admin = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Добавить мероприятие")],
 
-        [KeyboardButton(text="[Admin-event] Изменить предыдущее поле"),],
+        [KeyboardButton(text="[Admin-event] Изменить предыдущее поле"), ],
 
         [KeyboardButton(text="[Admin] отмена")]
     ],
@@ -133,6 +144,55 @@ confirm_or_change_admin_info_by_admin = ReplyKeyboardMarkup(
         [KeyboardButton(text="Добавить администратора")],
 
         [KeyboardButton(text="[Admin-admin] Изменить предыдущее поле")],
+
+        [KeyboardButton(text="[Admin] отмена")]
+    ],
+    resize_keyboard=True
+)
+
+# inspector from admin
+# Cancel or Back for Admin Change admin keyboard
+cancel_or_back_for_admin_change_admin = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="[Admin-admin] Изменить предыдущее поле")],
+
+        [KeyboardButton(text="[Admin-admin] Пропустить поле")],
+
+        [KeyboardButton(text="[Admin] отмена")]
+    ],
+    resize_keyboard=True
+)
+
+# Cancel or Back for admin keyboard
+cancel_or_back_for_admin_inspector = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="[Admin-inspector] Изменить предыдущее поле")],
+
+        [KeyboardButton(text="[Admin] отмена")]
+    ],
+
+    resize_keyboard=True
+)
+
+
+# Cancel or Back for Admin Change inspector keyboard
+cancel_or_back_for_admin_change_inspector = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="[Admin-inspector] Изменить предыдущее поле")],
+
+        [KeyboardButton(text="[Admin-inspector] Пропустить поле")],
+
+        [KeyboardButton(text="[Admin] отмена")]
+    ],
+    resize_keyboard=True
+)
+
+# Confirm or change inspector info
+confirm_or_change_inspector_info_by_admin = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Добавить проверяющего")],
+
+        [KeyboardButton(text="[Admin-inspector] Изменить предыдущее поле")],
 
         [KeyboardButton(text="[Admin] отмена")]
     ],
@@ -164,7 +224,6 @@ cancel_or_back_for_check_user = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-
 # Cancel or Back or Skip for inspector checking user
 cancel_or_back_or_skip_for_check_user = ReplyKeyboardMarkup(
     keyboard=[
@@ -176,7 +235,6 @@ cancel_or_back_or_skip_for_check_user = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True
 )
-
 
 # Confirm inspector
 confirm_user_by_inspector = ReplyKeyboardMarkup(
