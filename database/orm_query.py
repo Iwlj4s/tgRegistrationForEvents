@@ -1,7 +1,7 @@
 from sqlalchemy import select, update, delete, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import Users, Events, UsersEvents, ClosedEvents, Admins, Attendance
+from database.models import Users, Events, UsersEvents, ClosedEvents, Admins, Attendance, Inspectors
 
 
 # USERS #
@@ -344,7 +344,7 @@ async def orm_confirm_user(session: AsyncSession, data):
 
 
 # ADD ADMIN #
-async def orm_admin_add_info(session: AsyncSession, data: dict, message):
+async def orm_admin_add_info(session: AsyncSession, data: dict):
     obj = Admins(
         tg_id=data['admin_tg_id'],
         name=data['admin_name'],
@@ -354,4 +354,93 @@ async def orm_admin_add_info(session: AsyncSession, data: dict, message):
 
     session.add(obj)
 
+    await session.commit()
+
+
+# Get all admins
+async def orm_get_admins(session: AsyncSession):
+    query = select(Admins)
+    result = await session.execute(query)
+    return result.scalars().all()
+
+
+# Delete Admin
+async def orm_delete_admin(session: AsyncSession, admin_id: int):
+    query = delete(Admins).where(Admins.tg_id == admin_id)
+    await session.execute(query)
+    await session.commit()
+
+
+# Get one admin by id
+async def orm_get_admin(session: AsyncSession, admin_id: int):
+    query = select(Admins).where(Admins.id == admin_id)
+    result = await session.execute(query)
+
+    return result.scalar()
+
+
+# Update Admins
+async def orm_update_admin(session: AsyncSession, admin_id: int, data):
+    query = update(Admins).where(Admins.id == admin_id).values(
+        tg_id=data["tg_id"],
+        name=data["admin_name"],
+        phone=data["admin_phone"],
+        email=data["admin_email"])
+
+    await session.execute(query)
+    await session.commit()
+
+
+# Get Attendance
+async def orm_get_attendance(session: AsyncSession):
+    query = select(Attendance)
+    result = await session.execute(query)
+    return result.scalars().all()
+
+
+# ADD INSPECTOR #
+async def orm_inspector_add_info(session: AsyncSession, data: dict):
+    obj = Inspectors(
+        tg_id=data['tg_id'],
+        name=data['inspector_name'],
+        phone=data['inspector_phone'],
+        email=data['inspector_email'],
+    )
+
+    session.add(obj)
+
+    await session.commit()
+
+
+# Get all inspectors
+async def orm_get_inspectors(session: AsyncSession):
+    query = select(Inspectors)
+    result = await session.execute(query)
+    return result.scalars().all()
+
+
+# Delete Inspector
+async def orm_delete_inspector(session: AsyncSession, inspector_id: int):
+    query = delete(Inspectors).where(Inspectors.tg_id == inspector_id)
+    await session.execute(query)
+    await session.commit()
+
+
+# Get one inspector by id
+async def orm_get_inspector(session: AsyncSession, inspector_id: int):
+    query = select(Inspectors).where(Inspectors.id == inspector_id)
+    result = await session.execute(query)
+
+    return result.scalar()
+
+
+# Update Inspectors
+async def orm_update_inspector(session: AsyncSession, inspector_id: int, data):
+    query = update(Inspectors).where(Inspectors.id == inspector_id).values(
+        tg_id=data["tg_id"],
+        name=data["inspector_name"],
+        phone=data["inspector_phone"],
+        email=data["inspector_email"])
+
+    await session.execute(query)
     await session.commit()
