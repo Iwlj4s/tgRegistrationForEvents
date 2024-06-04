@@ -54,7 +54,7 @@ async def cmd_start(message: Message):
 
 # EVENTS list #
 @user_registration_router.message(or_f(Command("event"), (F.text.lower() == "список мероприятий")))
-async def events_list(message: Message, session: AsyncSession):
+async def events_list_user(message: Message, session: AsyncSession):
     events_message = "Список мероприятий:\n"
     user_id = message.from_user.id
     await message.answer("Список мероприятий:")
@@ -131,7 +131,7 @@ async def back_handler(message: Message, state: FSMContext):
 async def user_enter_name(message: Message, state: FSMContext):
     await state.update_data(user_name=message.text.lower())
 
-    await message.answer("Введите свой номер телефона: ",
+    await message.answer("Введите свой номер телефона ('+7(XXX)XXX-XX-XX'): ",
                          reply_markup=cancel_or_back_user)
     # WAITING USER PHONE #
     await state.set_state(UserRegistration.user_event_registration_phone)
@@ -148,6 +148,7 @@ async def user_enter_name(message: Message, state: FSMContext):
     await state.update_data(user_phone=str(message.text))
 
     await message.answer("Введите свой email: ")
+
     # WAITING USER PHONE #
     await state.set_state(UserRegistration.user_event_registration_email)
 
