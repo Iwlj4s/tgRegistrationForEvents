@@ -156,7 +156,7 @@ async def user_enter_name(message: Message, state: FSMContext):
 # GET USER EMAIL #
 @user_registration_router.message(UserRegistration.user_event_registration_email, F.text)
 async def user_enter_name(message: Message, state: FSMContext):
-    user_email = await validate_email_input(message.text)  # Check date format is day-month-year
+    user_email = await validate_email_input(message.text)
     if user_email is None:
         await message.answer("Некорректный формат почты.\nПожалуйста, введите почту в формате 'abcd123@gmail.com':")
         return
@@ -186,7 +186,7 @@ async def user_confirm(message: Message, state: FSMContext, session: AsyncSessio
 
     await orm_user_add_info(session=session, data=data, message=message)
 
-    await message.answer("Зарегистрираван пользователь: ")
+    await message.answer("Зарегистрирован пользователь: ")
     await message.answer(f"Ваш ID в телеграме - {message.from_user.id}\n"
                          f"{info}",
                          reply_markup=after_registration_user_keyboard)
