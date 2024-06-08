@@ -22,6 +22,15 @@
 
 Т.к бот пока что не подключен к хостингу протестировать его самостоятельно не получится
 
+**QR код для перехода в бота:**
+
+
+<img src="https://github.com/Iwlj4s/tgRegistrationForEvents/assets/113620590/0f30a679-9a1e-40b5-8153-fb768b6bf41a" width=330 height=400>
+
+
+**Ссылка для перехода в бота:**
+https://t.me/iwlj4sRegisrationForEventsbottsbot
+
 Ссылка на ютуб плейлист демонстрации каждой версии - https://youtube.com/playlist?list=PLB8-q_f_p-EzTaDudIzDl8hSogid6Qg2J&feature=shared
 
 
