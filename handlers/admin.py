@@ -116,9 +116,6 @@ async def admin_login(message: Message, session: AsyncSession, bot):
 
     admin_ids = [admin[0] for admin in admins_db]  # Extract Telegram IDs from the result set
 
-    print(f"Admin_db: {admin_ids}")
-    print(f"Msg from user: {message.from_user.id}")
-
     if message.from_user.id not in admin_ids:
         await bot.send_message(message.from_user.id, "У вас нет прав", reply_markup=start_registration_keyboard)
         # await message.answer("У вас нет прав", reply_markup=start_registration_keyboard)
@@ -161,7 +158,6 @@ async def get_users(message: Message, session: AsyncSession):
 # Delete User
 @admin_router.callback_query(F.data.startswith('delete_user_'))
 async def delete_user(callback: CallbackQuery, session: AsyncSession):
-    print("Delete function start !")
     user_id = callback.data.split("_")[-1]
     await orm_delete_user(session=session, user_id=int(user_id))
     await orm_delete_user_from_events(session=session, user_id=int(user_id))
@@ -351,9 +347,6 @@ async def admin_confirm(message: Message, state: FSMContext, session: AsyncSessi
     user_id = ChangeUserInfo.user_for_change.tg_id
     user_name = ChangeUserInfo.user_for_change.name
 
-    print(info)
-    print(data)
-
     await orm_update_user(session=session, user_id=ChangeUserInfo.user_for_change.id, data=data, message=message)
     await orm_update_users_events(session=session, user_tg_id=ChangeUserInfo.user_for_change.tg_id, data=data)
 
@@ -408,10 +401,6 @@ async def close_event(callback: CallbackQuery, session: AsyncSession, bot):
     for user in await orm_get_users_from_users_events(session=session, event_id=int(event_id)):
         await bot.send_message(user.user_tg_id,
                                f"{user.user_name.title()}, мероприятие {user.user_event_name} закрыто!")
-        print(user.user_event_id)
-        print(user.user_tg_id)
-        print(user.user_name)
-        print(user.user_event_name)
 
     await orm_add_info_in_closed_events(session=session, event=event)  # Add closing event in closedEvents
     await orm_delete_event(session=session, event_id=int(event_id))  # Delete closing event from Events
@@ -425,7 +414,6 @@ async def close_event(callback: CallbackQuery, session: AsyncSession, bot):
 # Delete Event
 @admin_router.callback_query(F.data.startswith('delete_event_'))
 async def delete_event(callback: CallbackQuery, session: AsyncSession):
-    print("Event Delete function start !")
     event_id = callback.data.split("_")[-1]
     await orm_delete_event(session=session, event_id=int(event_id))  # Delete closing event from Events
     await orm_delete_event_from_users_events(session=session, event_id=int(event_id))  # Delete closing event from
@@ -538,7 +526,6 @@ async def add_event_time(message: Message, state: FSMContext, session: AsyncSess
                                              event_date=event_date, event_time=event_time)
 
     if not same_event:
-        print(reason)
         await message.answer(reason, reply_markup=cancel_or_back_for_add_event_admin)
 
     else:
@@ -610,7 +597,6 @@ async def get_admins(message: Message, session: AsyncSession):
 # Delete Admin
 @admin_router.callback_query(F.data.startswith('delete_admin_'))
 async def delete_admin(callback: CallbackQuery, session: AsyncSession):
-    print("Delete function start !")
     admin_id = callback.data.split("_")[-1]
     await orm_delete_admin(session=session, admin_id=int(admin_id))
 
@@ -720,8 +706,7 @@ async def add_admin_email(message: Message, state: FSMContext):
     data = await state.get_data()
 
     info = get_admin_info(data=data)
-    print(data)
-    print(info)
+
     await message.answer("Данные администратора: ")
     await message.answer(f"{info}")
 
@@ -791,7 +776,6 @@ async def get_inspectors(message: Message, session: AsyncSession):
 # Delete Admin
 @admin_router.callback_query(F.data.startswith('delete_inspector_'))
 async def delete_inspector(callback: CallbackQuery, session: AsyncSession):
-    print("Delete function start !")
     inspector_id = callback.data.split("_")[-1]
     await orm_delete_inspector(session=session, inspector_id=int(inspector_id))
 
@@ -901,8 +885,7 @@ async def add_inspector_email(message: Message, state: FSMContext):
     data = await state.get_data()
 
     info = get_inspector_info(data=data)
-    print(data)
-    print(info)
+
     await message.answer("Данные проверяющего: ")
     await message.answer(f"{info}")
 
@@ -929,12 +912,16 @@ async def add_inspector_confirm(message: Message, state: FSMContext, session: As
                              f"{info}",
                              reply_markup=start_admin_keyboard)
 
+        AddInspector.inspector_for_change = None
+
     else:
         await orm_inspector_add_info(session=session, data=data)
 
         await message.answer("Добавлен проверяющий: ")
         await message.answer(f"{info}",
                              reply_markup=start_admin_keyboard)
+
+        AddInspector.inspector_for_change = None
 
     await state.clear()
     AddInspector.inspector_for_change = None
