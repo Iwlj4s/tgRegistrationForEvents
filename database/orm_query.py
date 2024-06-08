@@ -232,7 +232,6 @@ async def orm_delete_user_from_events(session: AsyncSession, user_id: int):
 
 # Add Event
 async def orm_add_event(session: AsyncSession, data, message):
-    # TODO: REFACTOR THIS SOON AS YOU CAN PLEASE
     max_id_query = select(func.max(Events.id))
     max_id_result = await session.execute(max_id_query)
     events_max_id = max_id_result.scalar()

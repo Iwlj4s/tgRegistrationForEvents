@@ -109,7 +109,6 @@ async def cancel_handler(message: Message, state: FSMContext):
 @user_registration_router.message(StateFilter('*'), F.text.lower() == "изменить предыдущее поле")
 @user_registration_router.message(StateFilter('*'), Command("Изменить предыдущее поле"))
 async def back_handler(message: Message, state: FSMContext):
-    print("Back Pressed!")
     current_state = await state.get_state()
 
     if current_state == UserRegistration.user_event_registration_name:

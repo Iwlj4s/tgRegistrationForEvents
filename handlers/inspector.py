@@ -52,9 +52,6 @@ async def inspector_login(message: Message, session: AsyncSession, bot):
 
     inspector_ids = [inspector[0] for inspector in inspectors]
 
-    print(f"Admin_db: {inspector_ids}")
-    print(f"Msg from user: {message.from_user.id}")
-
     if message.from_user.id not in inspector_ids:
         await bot.send_message(message.from_user.id, "У вас нет прав")
     else:
@@ -233,7 +230,6 @@ async def add_notes(message: Message, state: FSMContext, session: AsyncSession):
     if message.text == "[Inspector-check] Пропустить поле":
         inspector_notes = "Заметок нет"
         await state.update_data(inspector_notes=inspector_notes)
-        print(data)
 
     else:
         await state.update_data(inspector_notes=message.text.title())
@@ -241,7 +237,6 @@ async def add_notes(message: Message, state: FSMContext, session: AsyncSession):
     await message.answer(f"Вы подтверждаете, что пользователь {user_tg_id} "
                          f"будет присутствовать на мероприятии {user_event_name}?",
                          reply_markup=confirm_user_by_inspector)
-    print(data)
 
     # WAIT CONFIRM
     await state.set_state(UserCheck.inspector_confirm_user)
