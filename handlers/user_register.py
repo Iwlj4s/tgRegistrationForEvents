@@ -10,8 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 # My Imports #
-from keyboards.reply import start_registration_keyboard, confirm_or_change_user_info_by_user, get_keyboard, \
-    after_registration_user_keyboard, cancel_or_back_user
+from keyboards.reply import (start_registration_keyboard, confirm_or_change_user_info_by_user, get_keyboard,
+                             after_registration_user_keyboard, cancel_or_back_user)
 from keyboards.inline import get_callback_btns
 
 from user_data.get_user_info import get_user_info
@@ -109,7 +109,6 @@ async def cancel_handler(message: Message, state: FSMContext):
 @user_registration_router.message(StateFilter('*'), F.text.lower() == "изменить предыдущее поле")
 @user_registration_router.message(StateFilter('*'), Command("Изменить предыдущее поле"))
 async def back_handler(message: Message, state: FSMContext):
-    print("Back Pressed!")
     current_state = await state.get_state()
 
     if current_state == UserRegistration.user_event_registration_name:
