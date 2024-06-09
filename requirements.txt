@@ -1,0 +1,4 @@
+python-dotenv~=1.0.1
+aiogram~=3.4.1
+SQLAlchemy~=2.0.29
+email_validator~=2.1.1
