@@ -111,11 +111,19 @@ async def validate_time_input(time_str):
 
 
 # Check no same event
-async def no_same_event(session, event_name, event_address, event_date, event_time):
+async def no_same_event(session, event_name, event_address, event_date, event_time, original_event_name):
     name = await orm_get_event_by_name(session=session, event_name=event_name)
     address = await orm_get_event_by_address(session=session, event_address=event_address)
     date = await orm_get_event_by_date(session=session, event_date=event_date)
     time = await orm_get_event_by_time(session=session, event_time=event_time)
+
+    reason = ""
+    if original_event_name == event_name:
+        if address and date and time:
+            reason += "По этому адресу на эту дату и на это время уже зарегистрировано мероприятие"
+            return False, reason
+        else:
+            return True, ""
 
     if name or (address and date and time):
         reason = ""

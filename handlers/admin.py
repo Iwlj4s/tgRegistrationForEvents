@@ -1,4 +1,6 @@
 # Aiogram Imports #
+import datetime
+
 from aiogram import F, Router
 from aiogram.filters import Command, StateFilter, or_f
 from aiogram.fsm.context import FSMContext
@@ -21,7 +23,8 @@ from keyboards.reply import (start_registration_keyboard, start_admin_keyboard,
                              cancel_or_back_for_add_event_admin, after_registration_user_keyboard,
                              cancel_or_back_for_admin_admin, confirm_or_change_admin_info_by_admin,
                              cancel_or_back_for_admin_change_admin, cancel_or_back_for_admin_change_inspector,
-                             cancel_or_back_for_admin_inspector, confirm_or_change_inspector_info_by_admin)
+                             cancel_or_back_for_admin_inspector, confirm_or_change_inspector_info_by_admin,
+                             cancel_or_back_or_skip_for_add_event_admin)
 from keyboards.inline import get_callback_btns
 
 from user_data.get_user_info import get_user_info, get_user_data_for_admin, get_admin_info, get_inspector_info
@@ -434,7 +437,7 @@ async def change_event(callback: CallbackQuery, state: FSMContext, session: Asyn
 
     await callback.answer()
     await callback.message.answer("Измените название мероприятия: ",
-                                  reply_markup=cancel_or_back_for_add_event_admin)
+                                  reply_markup=cancel_or_back_or_skip_for_add_event_admin)
 
     # WAITING USER NAME #
     await state.set_state(AddEvent.add_event_name)
@@ -484,6 +487,8 @@ async def add_event_address(message: Message, state: FSMContext):
                       or_f(F.text, F.text == "[Admin-event] Пропустить поле"))
 async def add_event_date(message: Message, state: FSMContext):
     if message.text == "[Admin-event] Пропустить поле":
+        # date_obj = datetime.datetime.strptime(AddEvent.event_for_change.event_date, '%d-%m-%Y')
+        # event_date_correct = date_obj.date()
         await state.update_data(event_date=AddEvent.event_for_change.event_date)
 
     else:
@@ -522,20 +527,23 @@ async def add_event_time(message: Message, state: FSMContext, session: AsyncSess
     event_time = data.get("event_time")
     info = get_event_info(data=data)
 
+    original_event_name = AddEvent.event_for_change.event_name if AddEvent.event_for_change else ""
+
     same_event, reason = await no_same_event(session=session, event_name=event_name, event_address=event_address,
-                                             event_date=event_date, event_time=event_time)
+                                             event_date=event_date, event_time=event_time,
+                                             original_event_name=original_event_name)
 
     if not same_event:
         await message.answer(reason, reply_markup=cancel_or_back_for_add_event_admin)
+        return
 
-    else:
-        await message.answer("Мероприятие: \n"
-                             f"{info}")
+    await message.answer("Мероприятие: \n"
+                         f"{info}")
 
-        # WAITING CONFIRM / CHANGE EVENT #
-        await message.answer("Добавить мероприятие?",
-                             reply_markup=confirm_or_change_event_info_by_admin)
-        await state.set_state(AddEvent.confirm_or_change_event)
+    # WAITING CONFIRM / CHANGE EVENT #
+    await message.answer("Добавить мероприятие?",
+                         reply_markup=confirm_or_change_event_info_by_admin)
+    await state.set_state(AddEvent.confirm_or_change_event)
 
 
 # Adding Event

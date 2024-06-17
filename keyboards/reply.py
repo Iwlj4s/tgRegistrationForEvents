@@ -92,8 +92,8 @@ cancel_or_back_for_user_change_admin = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-# Cancel or Back for Add Event admin keyboard
-cancel_or_back_for_add_event_admin = ReplyKeyboardMarkup(
+# Cancel or Back or skip for Add Event admin keyboard
+cancel_or_back_or_skip_for_add_event_admin = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="[Admin-event] Изменить предыдущее поле")],
 
@@ -103,6 +103,16 @@ cancel_or_back_for_add_event_admin = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True
 )
+
+# Cancel or Back for Add Event admin keyboard
+cancel_or_back_for_add_event_admin = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="[Admin-event] Изменить предыдущее поле")],
+        [KeyboardButton(text="[Admin] отмена")]
+    ],
+    resize_keyboard=True
+)
+
 
 # Confirm changing info (by admin) keyboard
 confirm_or_change_user_info_by_admin = ReplyKeyboardMarkup(
