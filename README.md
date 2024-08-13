@@ -29,6 +29,11 @@
 **Ссылка для перехода в бота:**
 https://t.me/iwlj4sRegisrationForEventsbottsbot
 
+В данный момент бот не активен
+
+**Ссылка на видео демонстрацию бота**
+https://www.youtube.com/watch?v=NZQFNO5HGNs
+
 
 <H3 id="#roles">Роли</H3>
 
